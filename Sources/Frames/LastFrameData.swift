@@ -34,6 +34,7 @@ public final class LastFrameData {
     public func release() {
         cache.removeAllObjects()
         deleteExistingWorkingDir()
+        createWorkingDir()
     }
     
     public func addToCache(frameData: FrameData) -> String {

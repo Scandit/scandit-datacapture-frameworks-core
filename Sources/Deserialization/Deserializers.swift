@@ -40,7 +40,7 @@ public final class Deserializers {
 
     private let modeDeserializers: [DataCaptureModeDeserializer]
     private let componentDeserializers: [DataCaptureComponentDeserializer]
-    private let frameSourceDeserializer: FrameSourceDeserializer
+    let frameSourceDeserializer: FrameSourceDeserializer
     let dataCaptureViewDeserializer: DataCaptureViewDeserializer
     let dataCaptureContextDeserializer: DataCaptureContextDeserializer
 
