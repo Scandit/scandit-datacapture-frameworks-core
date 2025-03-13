@@ -79,31 +79,21 @@ public final class DataCaptureViewHandler {
         self.lock.wait()
         defer { self.lock.signal() }
         
-        if let wrapper = instances.first(where: { $0.dataCaptureView === view }) {
-            wrapper.addOverlay(overlay)
-        }
+        instances.first(where: { $0.dataCaptureView === view })?.addOverlay(overlay)
     }
 
     public func removeOverlayFromView(_ view: DataCaptureView, overlay: DataCaptureOverlay) {
         self.lock.wait()
         defer { self.lock.signal() }
         
-        if let wrapper = instances.first(where: { $0.dataCaptureView === view }) {
-            wrapper.removeOverlay(overlay)
-        }
-    }
-    
-    public func removeOverlayFromTopmostView(overlay: DataCaptureOverlay) {        
-        topmostWrapper?.removeOverlay(overlay)
+        instances.first(where: { $0.dataCaptureView === view })?.removeOverlay(overlay)
     }
 
     public func removeAllOverlaysFromView(_ view: DataCaptureView) {
         self.lock.wait()
         defer { self.lock.signal() }
         
-        if let wrapper = instances.first(where: { $0.dataCaptureView === view }) {
-            wrapper.removeAllOverlays()
-        }
+        instances.first(where: { $0.dataCaptureView === view })?.removeAllOverlays()
     }
 
     public func findFirstOverlayOfType<T: DataCaptureOverlay>() -> T? {
