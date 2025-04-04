@@ -9,7 +9,6 @@ import Foundation
 import ScanditCaptureCore
  
 public class DataCaptureViewWrapper {
-    let viewId: Int
     let dataCaptureView: DataCaptureView
     private var viewOverlays = [DataCaptureOverlay]()
 
@@ -17,23 +16,22 @@ public class DataCaptureViewWrapper {
         return viewOverlays
     }
 
-    init(dataCaptureView: DataCaptureView, viewId: Int) {
+    init(dataCaptureView: DataCaptureView) {
         self.dataCaptureView = dataCaptureView
-        self.viewId = viewId
     }
 
     func addOverlay(_ overlay: DataCaptureOverlay) {
-        self.viewOverlays.append(overlay)
-        dispatchMain {
-            self.dataCaptureView.addOverlay(overlay)
+        viewOverlays.append(overlay)
+        dispatchMainSync {
+            dataCaptureView.addOverlay(overlay)
         }
     }
 
     func removeOverlay(_ overlay: DataCaptureOverlay) {
         if let index = viewOverlays.firstIndex(where: { $0 === overlay}) {
             viewOverlays.remove(at: index)
-            dispatchMain {
-                self.dataCaptureView.removeOverlay(overlay)
+            dispatchMainSync {
+                dataCaptureView.removeOverlay(overlay)
             }
         }
     }
@@ -44,6 +42,7 @@ public class DataCaptureViewWrapper {
 
     func dispose() {
         removeAllOverlays()
+        viewOverlays.removeAll()
     }
 
     func removeAllOverlays() {

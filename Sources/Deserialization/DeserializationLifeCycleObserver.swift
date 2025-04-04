@@ -10,6 +10,7 @@ import ScanditCaptureCore
 @objc
 public protocol DeserializationLifeCycleObserver: NSObjectProtocol {
     @objc optional func didDisposeDataCaptureContext()
+    @objc optional func dataCaptureContext(deserialized context: DataCaptureContext?)
     @objc optional func dataCaptureView(deserialized view: DataCaptureView?)
     @objc optional func dataCaptureView(removed view: DataCaptureView)
     @objc optional func dataCaptureContext(addMode modeJson: String) throws
@@ -20,6 +21,8 @@ public protocol DeserializationLifeCycleObserver: NSObjectProtocol {
 
 public final class DeserializationLifeCycleDispatcher {
     public static let shared = DeserializationLifeCycleDispatcher()
+    
+    private var context: DataCaptureContext?
 
     private init() {}
 
@@ -27,10 +30,22 @@ public final class DeserializationLifeCycleDispatcher {
 
     public func attach(observer: DeserializationLifeCycleObserver) {
         observers.add(observer)
+        if observer.responds(to: #selector(DeserializationLifeCycleObserver.dataCaptureContext(deserialized:))) {
+            observer.dataCaptureContext!(deserialized: self.context)
+        }
     }
 
     public func detach(observer: DeserializationLifeCycleObserver) {
         observers.remove(observer)
+    }
+
+    func dispatchDataCaptureContextDeserialized(context: DataCaptureContext?) {
+        self.context = context
+        observers.compactMap { $0 as? DeserializationLifeCycleObserver }.forEach {
+            if $0.responds(to: #selector(DeserializationLifeCycleObserver.dataCaptureContext(deserialized:))) {
+                $0.dataCaptureContext!(deserialized: context)
+            }
+        }
     }
 
     func dispatchDataCaptureViewDeserialized(view: DataCaptureView?) {
