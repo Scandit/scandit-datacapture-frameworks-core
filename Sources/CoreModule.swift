@@ -13,6 +13,7 @@ public enum ScanditFrameworksCoreError: Error, CustomNSError {
     case cameraNotReadyError
     case wrongCameraPosition
     case nilSelf
+    case nilArgument
 
     public static var errorDomain: String = "SDCFrameworksErrorDomain"
 
@@ -34,6 +35,8 @@ public enum ScanditFrameworksCoreError: Error, CustomNSError {
             return 5
         case .nilSelf:
             return 6
+        case .nilArgument:
+            return 7
         }
     }
 
@@ -57,6 +60,8 @@ public enum ScanditFrameworksCoreError: Error, CustomNSError {
             return "The given camera position doesn't match with the current camera's position."
         case .nilSelf:
             return "The current object got deallocated."
+        case .nilArgument:
+            return "The argument is nil."
         }
     }
 }
