@@ -9,10 +9,12 @@ import ScanditCaptureCore
 open class FrameworksDataCaptureViewListener: NSObject {
     private let event = Event(.dataCaptureViewSizeChanged)
     private let eventEmitter: Emitter
+    private let viewId: Int
 
     private var isEnabled = AtomicBool()
 
-    public init(eventEmitter: Emitter) {
+    public init(eventEmitter: Emitter, viewId: Int) {
+        self.viewId = viewId
         self.eventEmitter = eventEmitter
     }
 
@@ -31,6 +33,7 @@ extension FrameworksDataCaptureViewListener: DataCaptureViewListener {
                                 orientation: UIInterfaceOrientation) {
         guard isEnabled.value, eventEmitter.hasListener(for: event) else { return }
         let payload = [
+            "viewId": self.viewId,
             "size": [
                 "width": size.width,
                 "height": size.height
