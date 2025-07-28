@@ -11,7 +11,7 @@ open class FrameworksFrameSourceListener: NSObject {
     private let frameSourceStateChangedEvent = Event(.frameSourceStateChanged)
     private let torchStateChangedEvent = Event(.torchStateChanged)
 
-    private var isEnabled = AtomicBool()
+    private var isEnabled = AtomicValue<Bool>()
 
     public init(eventEmitter: Emitter) {
         self.eventEmitter = eventEmitter
