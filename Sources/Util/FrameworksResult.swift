@@ -8,6 +8,8 @@ public protocol FrameworksResult {
     func success(result: Any?)
     func reject(code: String, message: String?, details: Any?)
     func reject(error: Error)
+
+    func isResolved() -> Bool
 }
 
 public extension FrameworksResult {
@@ -30,5 +32,10 @@ public class NoopFrameworksResult : FrameworksResult {
 
     public func reject(error: Error) {
         // Noop
+    }
+
+    public func isResolved() -> Bool
+        // Noop
+        return false
     }
 }
