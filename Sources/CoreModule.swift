@@ -429,10 +429,8 @@ open class CoreModule: NSObject, FrameworkModule {
     }
 
     public func dataCaptureViewDisposed(_ dataCaptureView: DataCaptureView) {
-        if let frameworksDataCaptureView = DataCaptureViewHandler.shared.getView(dataCaptureView.tag) {
-            dispatchMain {
-                frameworksDataCaptureView.dispose()
-            }
+        dispatchMain {
+            DataCaptureViewHandler.shared.removeView(dataCaptureView.tag)
         }
     }
     

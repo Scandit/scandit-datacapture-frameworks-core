@@ -16,7 +16,7 @@ public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
 
     private var viewListener: FrameworksDataCaptureViewListener?
 
-    public var view: DataCaptureView!
+    public var view: DataCaptureView?
 
     public var viewId: Int {
         return _viewId
@@ -41,7 +41,7 @@ public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
     public func addOverlay(_ overlay: DataCaptureOverlay) {
         viewOverlays.append(overlay)
         DispatchQueue.main.async {
-            self.view.addOverlay(overlay)
+            self.view?.addOverlay(overlay)
         }
     }
 
@@ -49,7 +49,7 @@ public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
         if let index = viewOverlays.firstIndex(where: { $0 === overlay }) {
             viewOverlays.remove(at: index)
             DispatchQueue.main.async {
-                self.view.removeOverlay(overlay)
+                self.view?.removeOverlay(overlay)
                 DeserializationLifeCycleDispatcher.shared.dispatchOverlayRemoved(overlay: overlay )
             }
         }
@@ -65,10 +65,11 @@ public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
     public func dispose() {
         removeAllOverlays()
         if let viewListener = viewListener {
-            view.removeListener(viewListener)
+            view?.removeListener(viewListener)
         }
         viewListener = nil
-        view.removeFromSuperview()
+        view?.removeFromSuperview()
+        view = nil
     }
 
     private func deserializeView(dataCaptureContext: DataCaptureContext, creationData: DataCaptureViewCreationData) throws {
@@ -78,26 +79,28 @@ public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
         view = try viewDeserializer.view(fromJSONString: creationData.viewJson, with: dataCaptureContext)
 
         // Set the ID tag to be able to find a view with a specific tag
-        view.tag = viewId
+        view?.tag = viewId
 
         // Initialize and set view listener
         viewListener = FrameworksDataCaptureViewListener(eventEmitter: emitter, viewId: viewId)
         if let viewListener = viewListener {
-            view.addListener(viewListener)
+            view?.addListener(viewListener)
             // Enable view listener by default
             viewListener.enable()
         }
     }
 
     public func updateView(updateData: DataCaptureViewCreationData) throws {
-        try viewDeserializer.update(self.view, fromJSONString: updateData.viewJson)
+        if let currentView = view {
+            try viewDeserializer.update(currentView, fromJSONString: updateData.viewJson)
+        }
     }
 
     public func mapFramePointToView(jsonString: String) -> CGPoint? {
         guard let point = CGPoint(json: jsonString) else {
             return nil
         }
-        return self.view.viewPoint(forFramePoint: point)
+        return self.view?.viewPoint(forFramePoint: point)
     }
 
     public func mapFrameQuadrilateralToView(jsonString: String) -> Quadrilateral? {
@@ -106,7 +109,7 @@ public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
             Log.error(ScanditFrameworksCoreError.deserializationError(error: nil, json: jsonString))
             return nil
         }
-        return self.view.viewQuadrilateral(forFrameQuadrilateral: quadrilateral)
+        return self.view?.viewQuadrilateral(forFrameQuadrilateral: quadrilateral)
     }
 
     public func registerDataCaptureViewListener() {
