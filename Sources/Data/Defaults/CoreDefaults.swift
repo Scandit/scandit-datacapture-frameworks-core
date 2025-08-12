@@ -7,32 +7,6 @@
 import Foundation
 import ScanditCaptureCore
 
-struct EncodableLaserlineViewFinder: DefaultsEncodable {
-    let size: SizeWithUnit
-    let style: String
-    let enabledColor: String
-    let disabledColor: String
-
-    init(size: SizeWithUnit,
-         style: String,
-         enabledColor: String,
-         disabledColor: String) {
-        self.size = size
-        self.style = style
-        self.enabledColor = enabledColor
-        self.disabledColor = disabledColor
-    }
-
-    func toEncodable() -> [String: Any?] {
-        [
-            "width": size.width.jsonString,
-            "style": style,
-            "enabledColor": enabledColor,
-            "disabledColor": disabledColor
-        ]
-    }
-}
-
 extension ScanditCaptureCore.RectangularViewfinderStyle: Swift.CaseIterable {
     public static var allCases: [RectangularViewfinderStyle] {
         [ .rounded, .square]
@@ -58,23 +32,27 @@ extension ScanditCaptureCore.CameraPosition: Swift.CaseIterable {
     }
 }
 
+
 struct CoreDefaults: DefaultsEncodable {
     private let cameraDefaults: CameraDefaults
     private let dataCaptureViewDefaults: DataCaptureViewDefaults
     private let rectangularViewfinderDefaults: RectangularViewfinderDefaults
     private let aimerViewfinderDefauls: EncodableAimerViewfinder
     private let brushDefaults: EncodableBrush
+    private let laserlineViewfinderDefaults: LaserlineViewfinderDefaults
 
     init(cameraDefaults: CameraDefaults,
          dataCaptureViewDefaults: DataCaptureViewDefaults,
          rectangularViewfinderDefaults: RectangularViewfinderDefaults,
          aimerViewfinderDefauls: EncodableAimerViewfinder,
-         brushDefaults: EncodableBrush) {
+         brushDefaults: EncodableBrush,
+         laserlineViewfinderDefaults: LaserlineViewfinderDefaults) {
         self.cameraDefaults = cameraDefaults
         self.dataCaptureViewDefaults = dataCaptureViewDefaults
         self.rectangularViewfinderDefaults = rectangularViewfinderDefaults
         self.aimerViewfinderDefauls = aimerViewfinderDefauls
         self.brushDefaults = brushDefaults
+        self.laserlineViewfinderDefaults = laserlineViewfinderDefaults
     }
 
     func toEncodable() -> [String: Any?] {
@@ -86,6 +64,7 @@ struct CoreDefaults: DefaultsEncodable {
             "RectangularViewfinder": rectangularViewfinderDefaults.toEncodable(),
             "AimerViewfinder": aimerViewfinderDefauls.toEncodable(),
             "Brush": brushDefaults.toEncodable(),
+            "LaserlineViewfinder": laserlineViewfinderDefaults.toEncodable(),
         ]
     }
 
@@ -98,6 +77,7 @@ struct CoreDefaults: DefaultsEncodable {
                             dataCaptureViewDefaults: DataCaptureViewDefaults(view: DataCaptureView(frame: .zero)),
                             rectangularViewfinderDefaults: rectangularViewfinderDefaults,
                             aimerViewfinderDefauls: EncodableAimerViewfinder(viewfinder: AimerViewfinder()),
-                            brushDefaults: EncodableBrush(brush: .transparent))
+                            brushDefaults: EncodableBrush(brush: .transparent),
+                            laserlineViewfinderDefaults: LaserlineViewfinderDefaults(viewfinder: LaserlineViewfinder()))
     }()
 }

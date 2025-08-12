@@ -15,3 +15,18 @@ public extension Dictionary {
         }
     }
 }
+
+
+public extension Dictionary where Key == String, Value == Any  {
+    var viewId: Int {
+        return self["viewId"] as! Int
+    }
+    
+    var modeId: Int {
+        return self["modeId"] as! Int
+    }
+    
+    var dataCaptureViewId: Int {
+        return self["dataCaptureViewId"] as! Int
+    }
+}
