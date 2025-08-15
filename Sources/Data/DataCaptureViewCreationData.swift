@@ -8,18 +8,15 @@ import Foundation
 
 public class DataCaptureViewCreationData {
     let viewId: Int
-    let parentId: Int?
     let viewJson: String
     let overlaysJson: [String]
 
     private init(
         viewId: Int,
-        parentId: Int?,
         viewJson: String,
         overlaysJson: [String]
     ) {
         self.viewId = viewId
-        self.parentId = parentId
         self.viewJson = viewJson
         self.overlaysJson = overlaysJson
     }
@@ -30,7 +27,6 @@ public class DataCaptureViewCreationData {
             // Return default values if JSON parsing fails
             return DataCaptureViewCreationData(
                 viewId: 0,
-                parentId: nil,
                 viewJson: "{}",
                 overlaysJson: []
             )
@@ -40,7 +36,6 @@ public class DataCaptureViewCreationData {
 
         return DataCaptureViewCreationData(
             viewId: json[Constants.VIEW_ID_KEY] as? Int ?? 0,
-            parentId: json[Constants.PARENT_ID_KEY] as? Int,
             viewJson: convertToJsonString(json) ?? "{}",
             overlaysJson: overlays
         )
@@ -70,7 +65,6 @@ public class DataCaptureViewCreationData {
 
     private struct Constants {
         static let VIEW_ID_KEY = "viewId"
-        static let PARENT_ID_KEY = "parentId"
         static let OVERLAYS_KEY = "overlays"
     }
 }
