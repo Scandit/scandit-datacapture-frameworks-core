@@ -39,14 +39,6 @@ public final class DataCaptureViewHandler {
     func addView(_ view: FrameworksDataCaptureView) {
         viewCache.addView(view: view)
     }
-    
-    public func addOverlayToView(view: DataCaptureView, overlay: DataCaptureOverlay) {
-        viewCache.getView(viewId: view.tag)?.addOverlay(overlay)
-    }
-    
-    public func removeOverlayFromTopmostView(_ overlay: DataCaptureOverlay) {
-        topmostDataCaptureView?.removeOverlay(overlay)
-    }
 
     public func getView(_ viewId: Int) -> FrameworksDataCaptureView? {
         return viewCache.getView(viewId: viewId)

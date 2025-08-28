@@ -37,6 +37,7 @@ open class FrameworksFrameSourceDeserializer: NSObject {
     }
 
     public func releaseCurrentCamera() {
+        camera?.switch(toDesiredState: FrameSourceState.off)
         camera = nil
         imageFrameSource = nil
     }
