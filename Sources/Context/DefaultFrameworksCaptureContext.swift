@@ -82,11 +82,8 @@ public final class DefaultFrameworksCaptureContext {
     }
 
     func release(dataCaptureContextListener: DataCaptureContextListener) {
-        if let existingContext = context {
-            existingContext.removeListener(dataCaptureContextListener)
-            existingContext.setFrameSource(nil)
-            existingContext.dispose()
-        }
+        context?.removeListener(dataCaptureContextListener)
+        context?.dispose()
         initialized = false
     }
 
