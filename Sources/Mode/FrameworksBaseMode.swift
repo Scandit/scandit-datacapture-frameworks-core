@@ -6,8 +6,8 @@
 
 import Foundation
 
-public protocol FrameworksBaseView {
-    var viewId: Int { get }
+public protocol FrameworksBaseMode {
+    var modeId: Int { get }
     var parentId: Int? { get }
     func dispose()
 }

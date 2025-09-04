@@ -73,7 +73,6 @@ open class CoreModule: NSObject, FrameworkModule {
     private let dataCaptureContextListener: FrameworksDataCaptureContextListener
     private let contextLock = DispatchSemaphore(value: 1)
     private let captureContext = DefaultFrameworksCaptureContext.shared
-    private let viewDeserializer = DataCaptureViewDeserializer(modeDeserializers: [])
 
     public init(emitter: Emitter,
                 frameSourceDeserializer: FrameworksFrameSourceDeserializer,
@@ -327,6 +326,7 @@ open class CoreModule: NSObject, FrameworkModule {
     public func removeAllModes(result: FrameworksResult) {
         captureContext.removeAllModes()
         DeserializationLifeCycleDispatcher.shared.dispatchAllModesRemovedFromContext()
+        LastFrameData.shared.release()
         result.success(result: nil)
     }
     
@@ -355,15 +355,14 @@ open class CoreModule: NSObject, FrameworkModule {
                 DataCaptureViewHandler.shared.addView(frameworksView)
                 DeserializationLifeCycleDispatcher.shared.dispatchDataCaptureViewDeserialized(view: frameworksView.view)
                 
-                if let createdView = frameworksView.view {
-                    // Handle overlays
-                    for overlay in creationData.overlaysJson {
-                        try DeserializationLifeCycleDispatcher.shared.dispatchAddOverlayToView(
-                            view: createdView,
-                            overlayJson: overlay
-                        )
-                    }
+                // Handle overlays
+                for overlay in creationData.overlaysJson {
+                    try DeserializationLifeCycleDispatcher.shared.dispatchAddOverlayToView(
+                        view: frameworksView,
+                        overlayJson: overlay
+                    )
                 }
+                
                 result.success(result: nil)
                 return frameworksView.view
             } catch {
@@ -395,13 +394,11 @@ open class CoreModule: NSObject, FrameworkModule {
                 // Handle overlays
                 frameworksView.removeAllOverlays()
                 
-                if let createdView = frameworksView.view {
-                    for overlay in updateData.overlaysJson {
-                        try DeserializationLifeCycleDispatcher.shared.dispatchAddOverlayToView(
-                            view: createdView,
-                            overlayJson: overlay
-                        )
-                    }
+                for overlay in updateData.overlaysJson {
+                    try DeserializationLifeCycleDispatcher.shared.dispatchAddOverlayToView(
+                        view: frameworksView,
+                        overlayJson: overlay
+                    )
                 }
                 result.success()
             } catch {
