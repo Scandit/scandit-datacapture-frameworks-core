@@ -446,7 +446,9 @@ open class CoreModule: NSObject, FrameworkModule {
     }
     
     private func removeAllViews() {
-        DataCaptureViewHandler.shared.removeAllViews()
+        dispatchMain {
+            DataCaptureViewHandler.shared.removeAllViews()
+        }
     }
     
     public func getOpenSourceSoftwareLicenseInfo(result: FrameworksResult) {
