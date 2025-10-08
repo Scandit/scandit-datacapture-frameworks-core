@@ -11,7 +11,7 @@ open class FrameworksDataCaptureViewListener: NSObject {
     private let eventEmitter: Emitter
     private let viewId: Int
 
-    private var isEnabled = AtomicValue<Bool>()
+    private var isEnabled = AtomicBool()
 
     public init(eventEmitter: Emitter, viewId: Int) {
         self.viewId = viewId

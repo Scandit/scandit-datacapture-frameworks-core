@@ -7,10 +7,8 @@
 import Foundation
 import ScanditCaptureCore
 
-@objc
-public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
+public class FrameworksDataCaptureView: FrameworksBaseView {
     private var _viewId: Int = 0
-    private var _parentId: Int? = nil
 
     private var viewOverlays = [DataCaptureOverlay]()
 
@@ -20,10 +18,6 @@ public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
 
     public var viewId: Int {
         return _viewId
-    }
-    
-    public var parentId: Int? {
-        return _parentId
     }
 
     public var overlays: [DataCaptureOverlay] {
@@ -50,7 +44,6 @@ public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
             viewOverlays.remove(at: index)
             DispatchQueue.main.async {
                 self.view?.removeOverlay(overlay)
-                DeserializationLifeCycleDispatcher.shared.dispatchOverlayRemoved(overlay: overlay )
             }
         }
     }
@@ -74,7 +67,6 @@ public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
 
     private func deserializeView(dataCaptureContext: DataCaptureContext, creationData: DataCaptureViewCreationData) throws {
         _viewId = creationData.viewId
-        _parentId = creationData.parentId
 
         view = try viewDeserializer.view(fromJSONString: creationData.viewJson, with: dataCaptureContext)
 
