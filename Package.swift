@@ -2,20 +2,6 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
-import Foundation
-
-// Read version from info.json
-func getVersion() -> String {
-    let infoJSONPath = Context.packageDirectory + "/../info.json"
-    guard let data = try? Data(contentsOf: URL(fileURLWithPath: infoJSONPath)),
-          let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-          let version = json["version"] as? String else {
-        fatalError("Could not read version from info.json at \(infoJSONPath)")
-    }
-    return version
-}
-
-let version = getVersion()
 
 let package = Package(
     name: "scandit-datacapture-frameworks-core",
