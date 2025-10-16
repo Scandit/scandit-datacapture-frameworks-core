@@ -6,53 +6,13 @@
 
 import ScanditCaptureCore
 
-open class FrameworksFrameSourceDeserializer: NSObject {
-    private let frameSourceListener: FrameSourceListener
-    private let torchListener: TorchListener
-    private var cameraDesiredState: FrameSourceState = FrameSourceState.off
+open class FrameworksFrameSourceDeserializer: NSObject, FrameSourceDeserializerDelegate {
+    private let frameSourceHandler: FrameSourceHandler
 
-    public init(frameSourceListener: FrameSourceListener, torchListener: TorchListener) {
-        self.frameSourceListener = frameSourceListener
-        self.torchListener = torchListener
+    public init(frameSourceHandler: FrameSourceHandler) {
+        self.frameSourceHandler = frameSourceHandler
     }
-
-    var camera: Camera? {
-        willSet {
-            camera?.removeListener(frameSourceListener)
-            camera?.removeTorchListener(torchListener)
-        }
-        didSet {
-            camera?.addListener(frameSourceListener)
-            camera?.addTorchListener(torchListener)
-        }
-    }
-
-    private var imageFrameSource: ImageFrameSource? {
-        willSet {
-            imageFrameSource?.removeListener(frameSourceListener)
-        }
-        didSet {
-            imageFrameSource?.addListener(frameSourceListener)
-        }
-    }
-
-    public func releaseCurrentCamera() {
-        camera = nil
-        imageFrameSource = nil
-    }
-
-    public func switchCameraToState(newState: FrameSourceState, completionHandler: ((Bool) -> Void)?) {
-        self.cameraDesiredState = newState
-        if camera == nil && imageFrameSource == nil {
-            completionHandler?(true)
-            return
-        }
-        camera?.switch(toDesiredState: newState, completionHandler: completionHandler)
-        imageFrameSource?.switch(toDesiredState: newState, completionHandler: completionHandler)
-    }
-}
-
-extension FrameworksFrameSourceDeserializer: FrameSourceDeserializerDelegate {
+    
     public func frameSourceDeserializer(_ deserializer: FrameSourceDeserializer,
                                  didStartDeserializingFrameSource frameSource: FrameSource,
                                  from jsonValue: JSONValue) {}
@@ -60,22 +20,8 @@ extension FrameworksFrameSourceDeserializer: FrameSourceDeserializerDelegate {
     public func frameSourceDeserializer(_ deserializer: FrameSourceDeserializer,
                                  didFinishDeserializingFrameSource frameSource: FrameSource,
                                         from jsonValue: JSONValue) {
-        camera = frameSource as? Camera
-        if let camera = camera {
-            if jsonValue.containsKey("desiredTorchState") {
-                var torchState: TorchState = .off
-                SDCTorchStateFromJSONString(jsonValue.string(forKey: "desiredTorchState"), &torchState)
-                camera.desiredTorchState = torchState
-            }
-            camera.switch(toDesiredState: cameraDesiredState)
-            self.camera = camera
-        } else {
-            guard let imageFrameSource = frameSource as? ImageFrameSource else {
-            	return
-            }
-            imageFrameSource.switch(toDesiredState: cameraDesiredState)
-            self.imageFrameSource = imageFrameSource
-        }
+        
+        self.frameSourceHandler.onNewFrameSourceDeserialized(frameSource: frameSource, json: jsonValue)
     }
 
     public func frameSourceDeserializer(_ deserializer: FrameSourceDeserializer,

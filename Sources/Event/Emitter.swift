@@ -8,6 +8,7 @@ public protocol Emitter {
     func emit(name: String, payload: [String: Any?])
     func hasListener(for event: String) -> Bool
     func hasViewSpecificListenersForEvent(_ viewId: Int, for event: String) -> Bool
+    func hasModeSpecificListenersForEvent(_ modeId: Int, for event: String) -> Bool
 }
 
 public extension Emitter {
@@ -17,5 +18,9 @@ public extension Emitter {
     
     func hasViewSpecificListenersForEvent( viewId: Int, for event: Event) -> Bool {
         hasViewSpecificListenersForEvent(viewId, for: event.name)
+    }
+    
+    func hasModeSpecificListenersForEvent( modeId: Int, for event: Event) -> Bool {
+        hasModeSpecificListenersForEvent(modeId, for: event.name)
     }
 }
