@@ -4,8 +4,6 @@
  * Copyright (C) 2023- Scandit AG. All rights reserved.
  */
 
-import os
-
 public class AtomicValue<T>
 {
     private var lock = os_unfair_lock_s()

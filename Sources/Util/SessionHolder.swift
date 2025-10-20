@@ -3,9 +3,7 @@
  *
  * Copyright (C) 2024- Scandit AG. All rights reserved.
  */
-
-import os
-
+ 
 public class SessionHolder<T> {
     private var wrapped: T?
 
