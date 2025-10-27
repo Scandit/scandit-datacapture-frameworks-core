@@ -4,6 +4,8 @@
  * Copyright (C) 2024- Scandit AG. All rights reserved.
  */
 
+import Foundation
+
 public extension Dictionary {
     func encodeToJSONString() -> String? {
         do {
@@ -21,11 +23,11 @@ public extension Dictionary where Key == String, Value == Any  {
     var viewId: Int {
         return self["viewId"] as! Int
     }
-    
+
     var modeId: Int {
         return self["modeId"] as! Int
     }
-    
+
     var dataCaptureViewId: Int {
         return self["dataCaptureViewId"] as! Int
     }
