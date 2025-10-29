@@ -5,7 +5,6 @@
  */
 
 import Foundation
-import ScanditCaptureCore
 
 public final class DefaultFrameworksCaptureContext {
     private init() {}
