@@ -4,16 +4,19 @@
  * Copyright (C) 2023- Scandit AG. All rights reserved.
  */
 
-public class AtomicBool {
+import os
+
+public class AtomicValue<T>
+{
     private var lock = os_unfair_lock_s()
 
-    private var _value: Bool
+    private var _value: T
 
-    public init(_ value: Bool = false) {
+    public init(_ value: T = false) {
         _value = value
     }
 
-    public var value: Bool {
+    public var value: T {
         get {
             defer { os_unfair_lock_unlock(&lock) }
             os_unfair_lock_lock(&lock)
@@ -22,9 +25,7 @@ public class AtomicBool {
         set {
             defer { os_unfair_lock_unlock(&lock) }
             os_unfair_lock_lock(&lock)
-            if _value != newValue {
-                _value = newValue
-            }
+            _value = newValue
         }
     }
 }

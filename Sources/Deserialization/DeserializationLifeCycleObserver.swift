@@ -10,19 +10,17 @@ import ScanditCaptureCore
 @objc
 public protocol DeserializationLifeCycleObserver: NSObjectProtocol {
     @objc optional func didDisposeDataCaptureContext()
-    @objc optional func dataCaptureContext(deserialized context: DataCaptureContext?)
     @objc optional func dataCaptureView(deserialized view: DataCaptureView?)
     @objc optional func dataCaptureView(removed view: DataCaptureView)
     @objc optional func dataCaptureContext(addMode modeJson: String) throws
     @objc optional func dataCaptureContext(removeMode modeJson: String)
     @objc optional func dataCaptureContextAllModeRemoved()
-    @objc optional func dataCaptureView(addOverlay overlayJson: String, to view: DataCaptureView) throws
+    @objc optional func dataCaptureView(addOverlay overlayJson: String, to view: FrameworksDataCaptureView) throws
+    @objc optional func dataCaptureView(removedOverlay overlay: DataCaptureOverlay)
 }
 
 public final class DeserializationLifeCycleDispatcher {
     public static let shared = DeserializationLifeCycleDispatcher()
-    
-    private var context: DataCaptureContext?
 
     private init() {}
 
@@ -30,22 +28,10 @@ public final class DeserializationLifeCycleDispatcher {
 
     public func attach(observer: DeserializationLifeCycleObserver) {
         observers.add(observer)
-        if observer.responds(to: #selector(DeserializationLifeCycleObserver.dataCaptureContext(deserialized:))) {
-            observer.dataCaptureContext!(deserialized: self.context)
-        }
     }
 
     public func detach(observer: DeserializationLifeCycleObserver) {
         observers.remove(observer)
-    }
-
-    func dispatchDataCaptureContextDeserialized(context: DataCaptureContext?) {
-        self.context = context
-        observers.compactMap { $0 as? DeserializationLifeCycleObserver }.forEach {
-            if $0.responds(to: #selector(DeserializationLifeCycleObserver.dataCaptureContext(deserialized:))) {
-                $0.dataCaptureContext!(deserialized: context)
-            }
-        }
     }
 
     func dispatchDataCaptureViewDeserialized(view: DataCaptureView?) {
@@ -96,10 +82,18 @@ public final class DeserializationLifeCycleDispatcher {
         }
     }
     
-    func dispatchAddOverlayToView(view: DataCaptureView, overlayJson: String) throws {
+    func dispatchAddOverlayToView(view: FrameworksDataCaptureView, overlayJson: String) throws {
         try observers.compactMap { $0 as? DeserializationLifeCycleObserver }.forEach {
             if $0.responds(to: #selector(DeserializationLifeCycleObserver.dataCaptureView(addOverlay:to:))) {
                 try $0.dataCaptureView!(addOverlay: overlayJson, to: view)
+            }
+        }
+    }
+    
+    public func dispatchOverlayRemoved(overlay: DataCaptureOverlay) {
+        observers.compactMap { $0 as? DeserializationLifeCycleObserver }.forEach {
+            if $0.responds(to: #selector(DeserializationLifeCycleObserver.dataCaptureView(removedOverlay:))) {
+                $0.dataCaptureView!(removedOverlay: overlay)
             }
         }
     }
