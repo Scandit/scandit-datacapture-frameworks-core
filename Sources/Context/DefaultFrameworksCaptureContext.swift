@@ -14,7 +14,7 @@ public final class DefaultFrameworksCaptureContext {
     private var deserializers: Deserializers?
 
     public var context: DataCaptureContext? {
-        return initialized ? DataCaptureContext.sharedInstance : nil
+        return initialized ? DataCaptureContext.shared : nil
     }
 
     func initialize(
@@ -82,8 +82,11 @@ public final class DefaultFrameworksCaptureContext {
     }
 
     func release(dataCaptureContextListener: DataCaptureContextListener) {
-        context?.removeListener(dataCaptureContextListener)
-        context?.dispose()
+        if let existingContext = context {
+            existingContext.removeListener(dataCaptureContextListener)
+            existingContext.setFrameSource(nil)
+            existingContext.dispose()
+        }
         initialized = false
     }
 
