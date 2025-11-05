@@ -13,14 +13,17 @@ public class DefaultAdvancedOverlayViewCache: AdvancedOverlayViewCache {
     public init() {}
 
     public func getOrCreateView(fromImage image: UIImage, withIdentifier viewIdentifier: String) -> UIImageView? {
-        var imageView: UIImageView
-        if self.views.keys.contains(viewIdentifier) {
-            imageView = self.views[viewIdentifier]!
-            imageView.image = image
-        } else {
-            imageView = self.createImageView(with: image, viewIdentifier:  viewIdentifier)
+        let block: () -> UIImageView? = {
+            var imageView: UIImageView
+            if self.views.keys.contains(viewIdentifier) {
+                imageView = self.views[viewIdentifier]!
+                imageView.image = image
+            } else {
+                imageView = self.createImageView(with: image, viewIdentifier:  viewIdentifier)
+            }
+            return imageView
         }
-        return imageView
+        return dispatchMainSync(block)
     }
 
     public func getOrCreateView(fromBase64EncodedData data: Data, withIdentifier viewIdentifier: String) -> UIImageView? {
