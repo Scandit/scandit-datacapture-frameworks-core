@@ -37,6 +37,7 @@ open class FrameworksFrameSourceDeserializer: NSObject {
     }
 
     public func releaseCurrentCamera() {
+        camera?.switch(toDesiredState: FrameSourceState.off)
         camera = nil
         imageFrameSource = nil
     }
@@ -60,8 +61,9 @@ extension FrameworksFrameSourceDeserializer: FrameSourceDeserializerDelegate {
     public func frameSourceDeserializer(_ deserializer: FrameSourceDeserializer,
                                  didFinishDeserializingFrameSource frameSource: FrameSource,
                                         from jsonValue: JSONValue) {
-        camera = frameSource as? Camera
+        self.camera = frameSource as? Camera
         if let camera = camera {
+            self.imageFrameSource = nil
             if jsonValue.containsKey("desiredTorchState") {
                 var torchState: TorchState = .off
                 SDCTorchStateFromJSONString(jsonValue.string(forKey: "desiredTorchState"), &torchState)
@@ -70,11 +72,12 @@ extension FrameworksFrameSourceDeserializer: FrameSourceDeserializerDelegate {
             camera.switch(toDesiredState: cameraDesiredState)
             self.camera = camera
         } else {
-            guard let imageFrameSource = frameSource as? ImageFrameSource else {
+            self.camera = nil
+            self.imageFrameSource = frameSource as? ImageFrameSource
+            guard let imageFrameSource = self.imageFrameSource else {
             	return
             }
             imageFrameSource.switch(toDesiredState: cameraDesiredState)
-            self.imageFrameSource = imageFrameSource
         }
     }
 
