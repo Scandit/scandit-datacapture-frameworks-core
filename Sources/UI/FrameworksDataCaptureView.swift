@@ -7,21 +7,27 @@
 import Foundation
 import ScanditCaptureCore
 
-public class FrameworksDataCaptureView: FrameworksBaseView {
-    private var _viewId: Int = 0
+@objc
+public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
+    private var internalViewId: Int = 0
+    private var internalParentId: Int? = nil
 
-    private var viewOverlays = [DataCaptureOverlay]()
+    private var viewOverlays: [DataCaptureOverlay] = []
 
     private var viewListener: FrameworksDataCaptureViewListener?
 
     public var view: DataCaptureView?
 
     public var viewId: Int {
-        return _viewId
+        internalViewId
+    }
+
+    public var parentId: Int? {
+        internalParentId
     }
 
     public var overlays: [DataCaptureOverlay] {
-        return viewOverlays
+        viewOverlays
     }
 
     private let emitter: Emitter
@@ -44,6 +50,7 @@ public class FrameworksDataCaptureView: FrameworksBaseView {
             viewOverlays.remove(at: index)
             DispatchQueue.main.async {
                 self.view?.removeOverlay(overlay)
+                DeserializationLifeCycleDispatcher.shared.dispatchOverlayRemoved(overlay: overlay)
             }
         }
     }
@@ -65,8 +72,12 @@ public class FrameworksDataCaptureView: FrameworksBaseView {
         view = nil
     }
 
-    private func deserializeView(dataCaptureContext: DataCaptureContext, creationData: DataCaptureViewCreationData) throws {
-        _viewId = creationData.viewId
+    private func deserializeView(
+        dataCaptureContext: DataCaptureContext,
+        creationData: DataCaptureViewCreationData
+    ) throws {
+        internalViewId = creationData.viewId
+        internalParentId = creationData.parentId
 
         view = try viewDeserializer.view(fromJSONString: creationData.viewJson, with: dataCaptureContext)
 
@@ -113,14 +124,16 @@ public class FrameworksDataCaptureView: FrameworksBaseView {
     }
 
     public func findFirstOfType<T: DataCaptureOverlay>() -> T? {
-        return overlays.first { $0 is T } as? T
+        overlays.first { $0 is T } as? T
     }
 
     // MARK: - Factory method
 
-    public static func create(emitter: Emitter,
-                             dataCaptureContext: DataCaptureContext,
-                             creationData: DataCaptureViewCreationData) throws -> FrameworksDataCaptureView {
+    public static func create(
+        emitter: Emitter,
+        dataCaptureContext: DataCaptureContext,
+        creationData: DataCaptureViewCreationData
+    ) throws -> FrameworksDataCaptureView {
         let view = FrameworksDataCaptureView(
             emitter: emitter,
             viewDeserializer: DataCaptureViewDeserializer(modeDeserializers: [])

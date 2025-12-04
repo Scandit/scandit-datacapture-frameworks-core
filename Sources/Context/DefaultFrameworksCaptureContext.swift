@@ -5,6 +5,7 @@
  */
 
 import Foundation
+import ScanditCaptureCore
 
 public final class DefaultFrameworksCaptureContext {
     private init() {}
@@ -14,7 +15,7 @@ public final class DefaultFrameworksCaptureContext {
     private var deserializers: Deserializers?
 
     public var context: DataCaptureContext? {
-        return initialized ? DataCaptureContext.sharedInstance : nil
+        initialized ? DataCaptureContext.shared : nil
     }
 
     func initialize(
@@ -22,7 +23,7 @@ public final class DefaultFrameworksCaptureContext {
         frameSourceListener: FrameSourceListener,
         frameSourceDeserializerListener: FrameworksFrameSourceDeserializer,
         dataCaptureContextListener: DataCaptureContextListener
-    ) throws -> DataCaptureContext  {
+    ) throws -> DataCaptureContext {
         contextLock.lock()
         defer { contextLock.unlock() }
 
@@ -50,7 +51,8 @@ public final class DefaultFrameworksCaptureContext {
 
         // Proceed with FrameSource
         if let frameSourceJson = data.frameSource {
-            if let frameSource = try deserializers?.frameSourceDeserializer.frameSource(fromJSONString: frameSourceJson) {
+            if let frameSource = try deserializers?.frameSourceDeserializer.frameSource(fromJSONString: frameSourceJson)
+            {
                 dcContext.setFrameSource(frameSource)
             }
         }
@@ -75,15 +77,19 @@ public final class DefaultFrameworksCaptureContext {
         }
 
         if let frameSourceJson = data.frameSource {
-            if let frameSource = try deserializers?.frameSourceDeserializer.frameSource(fromJSONString: frameSourceJson) {
+            if let frameSource = try deserializers?.frameSourceDeserializer.frameSource(fromJSONString: frameSourceJson)
+            {
                 context?.setFrameSource(frameSource)
             }
         }
     }
 
     func release(dataCaptureContextListener: DataCaptureContextListener) {
-        context?.removeListener(dataCaptureContextListener)
-        context?.dispose()
+        if let existingContext = context {
+            existingContext.removeListener(dataCaptureContextListener)
+            existingContext.setFrameSource(nil)
+            existingContext.dispose()
+        }
         initialized = false
     }
 
@@ -102,4 +108,3 @@ public final class DefaultFrameworksCaptureContext {
 
     public static let shared = DefaultFrameworksCaptureContext()
 }
-

@@ -18,7 +18,7 @@ public struct EncodableBrush: DefaultsEncodable {
         [
             "fillColor": brush.fillColor.sdcHexString,
             "strokeColor": brush.strokeColor.sdcHexString,
-            "strokeWidth": brush.strokeWidth
+            "strokeWidth": brush.strokeWidth,
         ]
     }
 }
