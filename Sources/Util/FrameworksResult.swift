@@ -16,7 +16,7 @@ public extension FrameworksResult {
     }
 }
 
-public class NoopFrameworksResult: FrameworksResult {
+public class NoopFrameworksResult : FrameworksResult {
     public init() {
     }
 

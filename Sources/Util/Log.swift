@@ -8,7 +8,7 @@ import Foundation
 import os.log
 
 extension OSLog {
-    private static let subsystem = Bundle.main.bundleIdentifier ?? "com.scandit.datacapture"
+    private static let subsystem = Bundle.main.bundleIdentifier!
 
     static let sdcFrameworks = OSLog(subsystem: subsystem, category: "sdc-frameworks")
 }
