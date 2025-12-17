@@ -18,7 +18,7 @@ struct LaserlineViewfinderDefaults: DefaultsEncodable {
         [
             "width": viewfinder.width.jsonString,
             "enabledColor": viewfinder.enabledColor.sdcHexString,
-            "disabledColor": viewfinder.disabledColor.sdcHexString
+            "disabledColor": viewfinder.disabledColor.sdcHexString,
         ]
     }
 }
