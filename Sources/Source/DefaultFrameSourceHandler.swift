@@ -30,11 +30,11 @@ public class DefaultFrameSourceHandler: FrameSourceHandler {
     }
 
     public var currentCameraDesiredState: FrameSourceState? {
-        camera?.desiredState
+        return camera?.desiredState
     }
 
     public var currentCameraState: FrameSourceState? {
-        camera?.currentState
+        return camera?.currentState
     }
 
     public init(frameSourceListener: FrameworksFrameSourceListener) {
@@ -48,18 +48,12 @@ public class DefaultFrameSourceHandler: FrameSourceHandler {
 
             if json.containsKey(DefaultFrameSourceHandler.desiredTorchStateKey) {
                 var torchState: TorchState = .off
-                SDCTorchStateFromJSONString(
-                    json.string(forKey: DefaultFrameSourceHandler.desiredTorchStateKey),
-                    &torchState
-                )
+                SDCTorchStateFromJSONString(json.string(forKey: DefaultFrameSourceHandler.desiredTorchStateKey), &torchState)
                 camera.desiredTorchState = torchState
             }
             if json.containsKey(DefaultFrameSourceHandler.desiredStateKey) {
                 var frameState: FrameSourceState = .off
-                SDCFrameSourceStateFromJSONString(
-                    json.string(forKey: DefaultFrameSourceHandler.desiredStateKey),
-                    &frameState
-                )
+                SDCFrameSourceStateFromJSONString(json.string(forKey: DefaultFrameSourceHandler.desiredStateKey), &frameState)
                 camera.switch(toDesiredState: frameState)
             }
         } else if let imageFrameSource = frameSource as? ImageFrameSource {
@@ -68,10 +62,7 @@ public class DefaultFrameSourceHandler: FrameSourceHandler {
 
             if json.containsKey(DefaultFrameSourceHandler.desiredStateKey) {
                 var frameState: FrameSourceState = .off
-                SDCFrameSourceStateFromJSONString(
-                    json.string(forKey: DefaultFrameSourceHandler.desiredStateKey),
-                    &frameState
-                )
+                SDCFrameSourceStateFromJSONString(json.string(forKey: DefaultFrameSourceHandler.desiredStateKey), &frameState)
                 imageFrameSource.switch(toDesiredState: frameState)
             }
         }

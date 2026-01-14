@@ -30,9 +30,8 @@ public class FramesHandlingConfiguration {
                     with: jsonData,
                     options: []
                 ) as? [String: Any],
-                    let settingsJson = json["settings"] as? [String: Any]
-                {
-
+                   let settingsJson = json["settings"] as? [String: Any] {
+                    
                     guard let frameSettings = settingsJson["frameDataSettings"] as? [String: Any] else {
                         return createDefaultConfiguration()
                     }
@@ -59,7 +58,7 @@ public class FramesHandlingConfiguration {
     }
 
     public static func createDefaultConfiguration() -> FramesHandlingConfiguration {
-        FramesHandlingConfiguration(
+        return FramesHandlingConfiguration(
             isFileSystemCacheEnabled: false,
             imageQuality: 100,
             autoRotateImages: false

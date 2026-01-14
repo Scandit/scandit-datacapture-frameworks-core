@@ -1,17 +1,17 @@
 Pod::Spec.new do |s|
     s.name                    = 'scandit-datacapture-frameworks-core'
-    s.version                 = '8.1.0'
+    s.version                 = '8.0.1'
     s.summary                 = 'Scandit Frameworks Shared Core module'
     s.homepage                = 'https://github.com/Scandit/scandit-datacapture-frameworks-core'
     s.license                 = { :type => 'Apache-2.0' , :text => 'Licensed under the Apache License, Version 2.0 (the "License");' }
     s.author                  = { 'Scandit' => 'support@scandit.com' }
     s.platforms               = { :ios => '15.0' }
-    s.source                  = { :git => 'https://github.com/Scandit/scandit-datacapture-frameworks-core.git', :tag => '8.1.0' }
+    s.source                  = { :git => 'https://github.com/Scandit/scandit-datacapture-frameworks-core.git', :tag => '8.0.1' }
     s.swift_version           = '5.7'
     s.source_files            = 'Sources/**/*.{h,m,swift}'
     s.requires_arc            = true
     s.module_name             = 'ScanditFrameworksCore'
     s.header_dir              = 'ScanditFrameworksCore'
 
-    s.dependency 'ScanditCaptureCore', '= 8.1.0'
+    s.dependency 'ScanditCaptureCore', '= 8.0.1'
 end

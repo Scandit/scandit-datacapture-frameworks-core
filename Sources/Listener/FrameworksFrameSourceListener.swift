@@ -29,11 +29,11 @@ open class FrameworksFrameSourceListener: NSObject {
 extension FrameworksFrameSourceListener: FrameSourceListener {
     public func frameSource(_ source: FrameSource, didChange newState: FrameSourceState) {
         var payload = ["state": newState.jsonString]
-
+        
         if let camera = source as? Camera {
             payload["cameraPosition"] = camera.position.jsonString
         }
-
+        
         guard isEnabled.value, eventEmitter.hasListener(for: frameSourceStateChangedEvent) else { return }
         frameSourceStateChangedEvent.emit(on: eventEmitter, payload: payload)
     }

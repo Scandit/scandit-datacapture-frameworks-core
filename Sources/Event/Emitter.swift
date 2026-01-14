@@ -15,12 +15,12 @@ public extension Emitter {
     func hasListener(for event: Event) -> Bool {
         hasListener(for: event.name)
     }
-
-    func hasViewSpecificListenersForEvent(viewId: Int, for event: Event) -> Bool {
+    
+    func hasViewSpecificListenersForEvent( viewId: Int, for event: Event) -> Bool {
         hasViewSpecificListenersForEvent(viewId, for: event.name)
     }
-
-    func hasModeSpecificListenersForEvent(modeId: Int, for event: Event) -> Bool {
+    
+    func hasModeSpecificListenersForEvent( modeId: Int, for event: Event) -> Bool {
         hasModeSpecificListenersForEvent(modeId, for: event.name)
     }
 }

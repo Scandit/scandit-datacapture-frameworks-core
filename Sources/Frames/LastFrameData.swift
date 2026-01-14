@@ -17,9 +17,7 @@ public final class LastFrameData {
     private var configuration: FramesHandlingConfiguration = FramesHandlingConfiguration.createDefaultConfiguration()
 
     private init() {
-        guard let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else {
-            fatalError("Unable to access caches directory")
-        }
+        let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
         workingDir = cacheDir.appendingPathComponent("sc_frames")
 
         deleteExistingWorkingDir()
@@ -29,6 +27,7 @@ public final class LastFrameData {
     public var isFileSystemCacheEnabled: Bool {
         configuration.isFileSystemCacheEnabled
     }
+
 
     public func configure(configuration: FramesHandlingConfiguration) {
         self.configuration = configuration
@@ -56,7 +55,7 @@ public final class LastFrameData {
             return
         }
 
-        if self.configuration.isFileSystemCacheEnabled {
+        if (self.configuration.isFileSystemCacheEnabled) {
             let encodedJson = getEncodableFrameData(frameId: frameId, data: frameData).encodeToJSONString()
             result(encodedJson)
             return
@@ -125,13 +124,13 @@ public final class LastFrameData {
         return nil
     }
 
-    private func getEncodableImageBuffer(frameId: String, buffer: ImageBuffer) -> [String: Any?] {
+    private func getEncodableImageBuffer(frameId: String, buffer: ImageBuffer) ->  [String: Any?] {
         var encodedData: [String: Any?] = [
-            "width": buffer.width,
-            "height": buffer.height,
+          "width": buffer.width,
+          "height": buffer.height
         ]
 
-        if self.configuration.isFileSystemCacheEnabled {
+        if (self.configuration.isFileSystemCacheEnabled) {
             encodedData["data"] = saveImageAsPNG(frameId: frameId, image: buffer.image)
         } else {
             encodedData["data"] = buffer.image?.pngData()
@@ -140,8 +139,8 @@ public final class LastFrameData {
         return encodedData
     }
 
-    private func getEncodableFrameData(frameId: String, data: FrameData) -> [String: Any?] {
-        [
+    private func getEncodableFrameData(frameId: String, data: FrameData) ->  [String: Any?] {
+        return  [
             "imageBuffers": data.imageBuffers.compactMap { getEncodableImageBuffer(frameId: frameId, buffer: $0) },
             "orientation": 90,
         ]
@@ -152,7 +151,7 @@ public final class LastFrameData {
 private class FrameDataCache {
     private let cache: NSCache<NSString, FrameData> = {
         let cache = NSCache<NSString, FrameData>()
-        cache.countLimit = 2  // Set the maximum number of objects the cache can hold
+        cache.countLimit = 2 // Set the maximum number of objects the cache can hold
         return cache
     }()
 
@@ -165,9 +164,9 @@ private class FrameDataCache {
     }
 
     func getFrame(forId frameId: String) -> FrameData? {
-        cacheQueue.sync {
+        return cacheQueue.sync {
             let frameData = cache.object(forKey: frameId as NSString)
-            if frameData != nil {
+            if (frameData != nil) {
                 cache.removeObject(forKey: frameId as NSString)
             }
             return frameData
@@ -186,6 +185,7 @@ private class FrameDataCache {
         }
     }
 }
+
 
 fileprivate extension UIImage {
     func rotate(by degrees: CGFloat) -> UIImage {

@@ -51,7 +51,7 @@ public enum ScanditFrameworksCoreError: Error, CustomNSError {
             if let error = error {
                 message = "An internal deserialization error happened:\n\(error.localizedDescription)"
             } else {
-                message = "Unable to deserialize the following JSON:\n\(json ?? "null")"
+                message = "Unable to deserialize the following JSON:\n\(json!)"
             }
             return message
         case .cameraNotReadyError:
@@ -75,13 +75,11 @@ open class CoreModule: NSObject, FrameworkModule {
     private let captureContext = DefaultFrameworksCaptureContext.shared
     private let frameSourceHandler: FrameSourceHandler
 
-    public init(
-        emitter: Emitter,
-        frameSourceDeserializer: FrameworksFrameSourceDeserializer,
-        frameSourceListener: FrameworksFrameSourceListener,
-        dataCaptureContextListener: FrameworksDataCaptureContextListener,
-        frameSourceHandler: FrameSourceHandler
-    ) {
+    public init(emitter: Emitter,
+                frameSourceDeserializer: FrameworksFrameSourceDeserializer,
+                frameSourceListener: FrameworksFrameSourceListener,
+                dataCaptureContextListener: FrameworksDataCaptureContextListener,
+                frameSourceHandler: FrameSourceHandler) {
         self.emitter = emitter
         self.frameSourceDeserializer = frameSourceDeserializer
         self.frameSourceListener = frameSourceListener
@@ -94,13 +92,12 @@ open class CoreModule: NSObject, FrameworkModule {
         let frameSourceHandler = DefaultFrameSourceHandler(frameSourceListener: frameSourceListener)
         let frameSourceDeserializer = FrameworksFrameSourceDeserializer(frameSourceHandler: frameSourceHandler)
 
-        return CoreModule(
+        return CoreModule (
             emitter: emitter,
             frameSourceDeserializer: frameSourceDeserializer,
             frameSourceListener: frameSourceListener,
             dataCaptureContextListener: FrameworksDataCaptureContextListener(eventEmitter: emitter),
-            frameSourceHandler: frameSourceHandler
-        )
+            frameSourceHandler: frameSourceHandler)
     }
 
     public let defaults: DefaultsEncodable = CoreDefaults.shared
@@ -179,7 +176,7 @@ open class CoreModule: NSObject, FrameworkModule {
 
     public func viewPointForFramePoint(viewId: Int, json: String, result: FrameworksResult) {
         let block = { [weak self] in
-            guard self != nil else {
+            guard let _ = self else {
                 Log.error("Self was nil while trying to create the context.")
                 result.reject(error: ScanditFrameworksCoreError.nilSelf)
                 return
@@ -197,7 +194,7 @@ open class CoreModule: NSObject, FrameworkModule {
 
     public func viewQuadrilateralForFrameQuadrilateral(viewId: Int, json: String, result: FrameworksResult) {
         let block = { [weak self] in
-            guard self != nil else {
+            guard let _ = self else {
                 Log.error("Self was nil while trying to create the context.")
                 result.reject(error: ScanditFrameworksCoreError.nilSelf)
                 return
@@ -231,8 +228,7 @@ open class CoreModule: NSObject, FrameworkModule {
     }
 
     public func isTorchAvailable(cameraPosition: String, result: FrameworksResult) {
-        guard let isTorchAvailable = frameSourceHandler.getIsTorchAvailableByPosition(cameraPosition: cameraPosition)
-        else {
+        guard let isTorchAvailable = frameSourceHandler.getIsTorchAvailableByPosition(cameraPosition: cameraPosition) else {
             Log.error(ScanditFrameworksCoreError.cameraNotReadyError)
             result.reject(error: ScanditFrameworksCoreError.cameraNotReadyError)
             return
@@ -300,7 +296,7 @@ open class CoreModule: NSObject, FrameworkModule {
         var state = FrameSourceState.off
         SDCFrameSourceStateFromJSONString(stateJson, &state)
         frameSourceHandler.switchCameraToState(newState: state) { success in
-            if success {
+            if (success) {
                 result.success(result: nil)
             } else {
                 result.reject(code: "-1", message: "Unable to switch the camera to \(stateJson).", details: nil)
@@ -310,9 +306,9 @@ open class CoreModule: NSObject, FrameworkModule {
 
     public func addModeToContext(modeJson: String, result: FrameworksResult) {
         do {
-            try DeserializationLifeCycleDispatcher.shared.dispatchAddModeToContext(modeJson: modeJson)
+            try  DeserializationLifeCycleDispatcher.shared.dispatchAddModeToContext(modeJson: modeJson)
             result.success(result: nil)
-        } catch {
+        } catch  {
             result.reject(error: error)
         }
     }
@@ -330,12 +326,7 @@ open class CoreModule: NSObject, FrameworkModule {
         result.success(result: nil)
     }
 
-    public func createDataCaptureView(
-        viewJson: String,
-        result: FrameworksResult,
-        viewId: Int = 0,
-        completion: ((DataCaptureView?) -> Void)? = nil
-    ) {
+    public func createDataCaptureView(viewJson: String, result: FrameworksResult, viewId: Int = 0, completion: ((DataCaptureView?) -> Void)? = nil) {
         guard let dcContext = captureContext.context else {
             result.reject(error: ScanditFrameworksCoreError.nilDataCaptureContext)
             completion?(nil)
@@ -386,7 +377,7 @@ open class CoreModule: NSObject, FrameworkModule {
 
     public func updateDataCaptureView(viewJson: String, result: FrameworksResult) {
         let block = { [weak self] in
-            guard self != nil else {
+            guard let _ = self else {
                 Log.error("Self was nil while trying to create the context.")
                 result.reject(error: ScanditFrameworksCoreError.nilSelf)
                 return
@@ -401,6 +392,7 @@ open class CoreModule: NSObject, FrameworkModule {
             do {
 
                 try frameworksView.updateView(updateData: updateData)
+
 
                 // Handle overlays
                 frameworksView.removeAllOverlays()
@@ -419,6 +411,8 @@ open class CoreModule: NSObject, FrameworkModule {
         dispatchMain(block)
     }
 
+
+
     private func removeJsonKey(from jsonString: String, key: String) -> String? {
         guard let data = jsonString.data(using: .utf8) else {
             return nil
@@ -431,8 +425,7 @@ open class CoreModule: NSObject, FrameworkModule {
         json.removeValue(forKey: key)
 
         guard let updatedData = try? JSONSerialization.data(withJSONObject: json, options: []),
-            let updatedJsonString = String(data: updatedData, encoding: .utf8)
-        else {
+              let updatedJsonString = String(data: updatedData, encoding: .utf8) else {
             return nil
         }
 
