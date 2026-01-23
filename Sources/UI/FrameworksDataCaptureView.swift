@@ -40,7 +40,8 @@ public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
 
     public func addOverlay(_ overlay: DataCaptureOverlay) {
         viewOverlays.append(overlay)
-        DispatchQueue.main.async {
+        dispatchMain { [weak self] in
+            guard let self else { return }
             self.view?.addOverlay(overlay)
         }
     }
@@ -48,7 +49,8 @@ public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
     public func removeOverlay(_ overlay: DataCaptureOverlay) {
         if let index = viewOverlays.firstIndex(where: { $0 === overlay }) {
             viewOverlays.remove(at: index)
-            DispatchQueue.main.async {
+            dispatchMain { [weak self] in
+                guard let self else { return }
                 self.view?.removeOverlay(overlay)
                 DeserializationLifeCycleDispatcher.shared.dispatchOverlayRemoved(overlay: overlay )
             }
@@ -63,13 +65,16 @@ public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
     }
 
     public func dispose() {
-        removeAllOverlays()
-        if let viewListener = viewListener {
-            view?.removeListener(viewListener)
+        dispatchMain { [weak self] in
+            guard let self else { return }
+            self.removeAllOverlays()
+            if let viewListener = self.viewListener {
+                self.view?.removeListener(viewListener)
+            }
+            self.viewListener = nil
+            self.view?.removeFromSuperview()
+            self.view = nil
         }
-        viewListener = nil
-        view?.removeFromSuperview()
-        view = nil
     }
 
     private func deserializeView(dataCaptureContext: DataCaptureContext, creationData: DataCaptureViewCreationData) throws {
