@@ -24,6 +24,11 @@ open class BasicFrameworkModule<T>: NSObject, FrameworkModule {
         // Implementation to be provided by subclasses
     }
 
+    open func getDefaults() -> [String: Any?] {
+        // Implementation to be provided by subclasses
+        [:]
+    }
+
     // MARK: - Mode Cache Management
 
     public func addModeToCache(modeId: Int, mode: T) {
@@ -48,11 +53,11 @@ open class BasicFrameworkModule<T>: NSObject, FrameworkModule {
         return Array(modesCache.values)
     }
 
-     public func getModeFromCacheByParent(_ parentId: Int) -> FrameworksBaseMode? {
-         objc_sync_enter(self)
-         defer { objc_sync_exit(self) }
-         
-         return getAllModesInCache().compactMap{ $0 as? FrameworksBaseMode }.first { mode in
+    public func getModeFromCacheByParent(_ parentId: Int) -> FrameworksBaseMode? {
+        objc_sync_enter(self)
+        defer { objc_sync_exit(self) }
+
+        return getAllModesInCache().compactMap { $0 as? FrameworksBaseMode }.first { mode in
             mode.parentId == parentId
         }
     }
@@ -145,4 +150,9 @@ open class BasicFrameworkModule<T>: NSObject, FrameworkModule {
             postModeCreationActions.removeAll()
         }
     }
+
+    open func createCommand(_ method: any FrameworksMethodCall) -> (any BaseCommand)? {
+        nil
+    }
+
 }
