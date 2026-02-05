@@ -103,25 +103,21 @@ open class CoreModule: NSObject, FrameworkModule {
         )
     }
 
-    public func getDefaults() -> [String: Any?] {
-        CoreDefaults.shared.toEncodable()
-    }
+    public let defaults: DefaultsEncodable = CoreDefaults.shared
 
-    public func createContextFromJson(contextJson: String, result: FrameworksResult) {
+    public func createContextFromJSON(_ json: String, result: FrameworksResult) {
         do {
             self.contextLock.wait()
             defer { self.contextLock.signal() }
 
             let _ = try captureContext.initialize(
-                json: contextJson,
+                json: json,
                 frameSourceListener: frameSourceListener,
                 frameSourceDeserializerListener: frameSourceDeserializer,
                 dataCaptureContextListener: dataCaptureContextListener
             )
 
-            LastFrameData.shared.configure(
-                configuration: FramesHandlingConfiguration.create(contextCreationJson: contextJson)
-            )
+            LastFrameData.shared.configure(configuration: FramesHandlingConfiguration.create(contextCreationJson: json))
 
             result.success()
         } catch {
@@ -131,16 +127,14 @@ open class CoreModule: NSObject, FrameworkModule {
         }
     }
 
-    public func updateContextFromJson(contextJson: String, result: FrameworksResult) {
+    public func updateContextFromJSON(_ json: String, result: FrameworksResult) {
         do {
             self.contextLock.wait()
             defer { self.contextLock.signal() }
 
-            try captureContext.update(json: contextJson)
+            try captureContext.update(json: json)
 
-            LastFrameData.shared.configure(
-                configuration: FramesHandlingConfiguration.create(contextCreationJson: contextJson)
-            )
+            LastFrameData.shared.configure(configuration: FramesHandlingConfiguration.create(contextCreationJson: json))
 
             result.success(result: nil)
         } catch {
@@ -168,9 +162,9 @@ open class CoreModule: NSObject, FrameworkModule {
         return false
     }
 
-    public func emitFeedback(feedbackJson: String, result: FrameworksResult) {
+    public func emitFeedback(json: String, result: FrameworksResult) {
         do {
-            let feedback = try Feedback(fromJSONString: feedbackJson)
+            let feedback = try Feedback(fromJSONString: json)
             feedback.emit()
 
             dispatchMain {
@@ -183,7 +177,7 @@ open class CoreModule: NSObject, FrameworkModule {
         }
     }
 
-    public func viewPointForFramePoint(viewId: Int, pointJson: String, result: FrameworksResult) {
+    public func viewPointForFramePoint(viewId: Int, json: String, result: FrameworksResult) {
         let block = { [weak self] in
             guard self != nil else {
                 Log.error("Self was nil while trying to create the context.")
@@ -195,14 +189,13 @@ open class CoreModule: NSObject, FrameworkModule {
                 return
             }
 
-            let viewPoint = frameworksDataCaptureView.mapFramePointToView(jsonString: pointJson)
+            let viewPoint = frameworksDataCaptureView.mapFramePointToView(jsonString: json)
             result.success(result: viewPoint?.jsonString)
         }
         dispatchMain(block)
     }
 
-    public func viewQuadrilateralForFrameQuadrilateral(viewId: Int, quadrilateralJson: String, result: FrameworksResult)
-    {
+    public func viewQuadrilateralForFrameQuadrilateral(viewId: Int, json: String, result: FrameworksResult) {
         let block = { [weak self] in
             guard self != nil else {
                 Log.error("Self was nil while trying to create the context.")
@@ -213,7 +206,7 @@ open class CoreModule: NSObject, FrameworkModule {
                 result.reject(error: ScanditFrameworksCoreError.nilDataCaptureView)
                 return
             }
-            let viewQuad = frameworksDataCaptureView.mapFrameQuadrilateralToView(jsonString: quadrilateralJson)
+            let viewQuad = frameworksDataCaptureView.mapFrameQuadrilateralToView(jsonString: json)
             result.success(result: viewQuad?.jsonString)
         }
         dispatchMain(block)
@@ -248,7 +241,7 @@ open class CoreModule: NSObject, FrameworkModule {
         result.success(result: isTorchAvailable)
     }
 
-    public func disposeContext(result: FrameworksResult) {
+    public func disposeContext() {
         self.contextLock.wait()
         defer { self.contextLock.signal() }
 
@@ -257,7 +250,6 @@ open class CoreModule: NSObject, FrameworkModule {
         frameSourceHandler.releaseCamera()
         LastFrameData.shared.release()
         DeserializationLifeCycleDispatcher.shared.dispatchDataCaptureContextDisposed()
-        result.success()
     }
 
     public func didStart() {
@@ -267,31 +259,27 @@ open class CoreModule: NSObject, FrameworkModule {
     public func didStop() {
         DeserializationLifeCycleDispatcher.shared.detach(observer: self)
         Deserializers.Factory.clearDeserializers()
-        disposeContext(result: NoopFrameworksResult())
+        disposeContext()
     }
 
-    public func subscribeContextListener(result: FrameworksResult) {
+    public func registerDataCaptureContextListener() {
         dataCaptureContextListener.enable()
-        result.success()
     }
 
-    public func unsubscribeContextListener(result: FrameworksResult) {
+    public func unregisterDataCaptureContextListener() {
         dataCaptureContextListener.disable()
-        result.success()
     }
 
-    public func registerListenerForViewEvents(viewId: Int, result: FrameworksResult) {
+    public func registerDataCaptureViewListener(viewId: Int) {
         if let frameworksView = DataCaptureViewHandler.shared.getView(viewId) {
             frameworksView.registerDataCaptureViewListener()
         }
-        result.success()
     }
 
-    public func unregisterListenerForViewEvents(viewId: Int, result: FrameworksResult) {
+    public func unregisterDataCaptureViewListener(viewId: Int) {
         if let frameworksView = DataCaptureViewHandler.shared.getView(viewId) {
             frameworksView.unregisterDataCaptureViewListener()
         }
-        result.success()
     }
 
     public func unregisterTopmostDataCaptureViewListener() {
@@ -300,14 +288,12 @@ open class CoreModule: NSObject, FrameworkModule {
         }
     }
 
-    public func registerFrameSourceListener(result: FrameworksResult) {
+    public func registerFrameSourceListener() {
         frameSourceListener.enable()
-        result.successAndKeepCallback(result: nil)
     }
 
-    public func unregisterFrameSourceListener(result: FrameworksResult) {
+    public func unregisterFrameSourceListener() {
         frameSourceListener.disable()
-        result.success(result: nil)
     }
 
     public func switchCameraToDesiredState(stateJson: String, result: FrameworksResult) {
@@ -483,39 +469,6 @@ open class CoreModule: NSObject, FrameworkModule {
         LastFrameData.shared.getLastFrameDataJSON(frameId: frameId) {
             result.success(result: $0)
         }
-    }
-
-    public func getLastFrameOrNullAsJson(frameId: String, result: FrameworksResult) {
-        LastFrameData.shared.getLastFrameDataJSON(frameId: frameId) {
-            result.success(result: $0)
-        }
-    }
-
-    public func getLastFrameOrNullAsMap(frameId: String, result: FrameworksResult) {
-        LastFrameData.shared.getLastFrameDataBytes(frameId: frameId) {
-            result.success(result: $0)
-        }
-    }
-
-    public func createCommand(_ method: any FrameworksMethodCall) -> (any BaseCommand)? {
-        CoreModuleCommandFactory.create(module: self, method)
-    }
-
-    /// Single dispatcher for all Core commands.
-    /// Creates command from method call and executes it.
-    /// - Parameter method: The method call containing method name and parameters
-    /// - Parameter result: The result handler for async responses
-    /// - Returns: true if the method was handled, false if unknown
-    public func execute(
-        _ method: FrameworksMethodCall,
-        result: FrameworksResult,
-        module: FrameworkModule
-    ) -> Bool {
-        guard let command = module.createCommand(method) else {
-            return false
-        }
-        command.execute(result: result)
-        return true
     }
 }
 

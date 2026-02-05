@@ -24,11 +24,6 @@ open class BasicFrameworkModule<T>: NSObject, FrameworkModule {
         // Implementation to be provided by subclasses
     }
 
-    open func getDefaults() -> [String: Any?] {
-        // Implementation to be provided by subclasses
-        [:]
-    }
-
     // MARK: - Mode Cache Management
 
     public func addModeToCache(modeId: Int, mode: T) {
@@ -150,9 +145,4 @@ open class BasicFrameworkModule<T>: NSObject, FrameworkModule {
             postModeCreationActions.removeAll()
         }
     }
-
-    open func createCommand(_ method: any FrameworksMethodCall) -> (any BaseCommand)? {
-        nil
-    }
-
 }
