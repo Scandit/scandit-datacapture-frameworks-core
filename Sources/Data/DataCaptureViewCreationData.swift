@@ -8,30 +8,25 @@ import Foundation
 
 public class DataCaptureViewCreationData {
     let viewId: Int
-    let parentId: Int?
     let viewJson: String
     let overlaysJson: [String]
 
     private init(
         viewId: Int,
-        parentId: Int?,
         viewJson: String,
         overlaysJson: [String]
     ) {
         self.viewId = viewId
-        self.parentId = parentId
         self.viewJson = viewJson
         self.overlaysJson = overlaysJson
     }
 
     static func fromJson(_ jsonString: String) -> DataCaptureViewCreationData {
         guard let jsonData = jsonString.data(using: .utf8),
-            var json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
-        else {
+              var json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
             // Return default values if JSON parsing fails
             return DataCaptureViewCreationData(
                 viewId: 0,
-                parentId: nil,
                 viewJson: "{}",
                 overlaysJson: []
             )
@@ -40,26 +35,24 @@ public class DataCaptureViewCreationData {
         let overlays = getOverlaysFromViewJson(&json)
 
         return DataCaptureViewCreationData(
-            viewId: json[Constants.viewIdKey] as? Int ?? 0,
-            parentId: json[Constants.parentIdKey] as? Int,
+            viewId: json[Constants.VIEW_ID_KEY] as? Int ?? 0,
             viewJson: convertToJsonString(json) ?? "{}",
             overlaysJson: overlays
         )
     }
 
     private static func getOverlaysFromViewJson(_ json: inout [String: Any]) -> [String] {
-        var overlays: [String] = []
+        var overlays = [String]()
 
-        if let overlaysJson = json[Constants.overlaysKey] as? [[String: Any]] {
+        if let overlaysJson = json[Constants.OVERLAYS_KEY] as? [[String: Any]] {
             for overlay in overlaysJson {
                 if let overlayData = try? JSONSerialization.data(withJSONObject: overlay, options: []),
-                    let overlayString = String(data: overlayData, encoding: .utf8)
-                {
+                   let overlayString = String(data: overlayData, encoding: .utf8) {
                     overlays.append(overlayString)
                 }
             }
         }
-        json.removeValue(forKey: Constants.overlaysKey)
+        json.removeValue(forKey: Constants.OVERLAYS_KEY)
         return overlays
     }
 
@@ -71,8 +64,7 @@ public class DataCaptureViewCreationData {
     }
 
     private struct Constants {
-        static let viewIdKey = "viewId"
-        static let parentIdKey = "parentId"
-        static let overlaysKey = "overlays"
+        static let VIEW_ID_KEY = "viewId"
+        static let OVERLAYS_KEY = "overlays"
     }
 }

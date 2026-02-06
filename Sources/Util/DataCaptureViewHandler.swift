@@ -5,6 +5,7 @@
  */
 
 import Foundation
+
 import ScanditCaptureCore
 
 public final class DataCaptureViewHandler {
@@ -15,14 +16,14 @@ public final class DataCaptureViewHandler {
     private init() {}
 
     public var topmostDataCaptureView: FrameworksDataCaptureView? {
-        viewCache.getTopMost()
+        return viewCache.getTopMost()
     }
-
+    
     func removeTopmostView() -> FrameworksDataCaptureView? {
         guard let topmostDataCaptureView = self.topmostDataCaptureView else {
             return nil
         }
-
+        
         topmostDataCaptureView.dispose()
         return viewCache.remove(viewId: topmostDataCaptureView.viewId)
     }
@@ -30,7 +31,7 @@ public final class DataCaptureViewHandler {
     func removeView(_ viewId: Int) {
         viewCache.remove(viewId: viewId)?.dispose()
     }
-
+    
     func removeAllViews() {
         viewCache.disposeAll()
     }
@@ -38,12 +39,20 @@ public final class DataCaptureViewHandler {
     func addView(_ view: FrameworksDataCaptureView) {
         viewCache.addView(view: view)
     }
+    
+    public func addOverlayToView(view: DataCaptureView, overlay: DataCaptureOverlay) {
+        viewCache.getView(viewId: view.tag)?.addOverlay(overlay)
+    }
+    
+    public func removeOverlayFromTopmostView(_ overlay: DataCaptureOverlay) {
+        topmostDataCaptureView?.removeOverlay(overlay)
+    }
 
     public func getView(_ viewId: Int) -> FrameworksDataCaptureView? {
-        viewCache.getView(viewId: viewId)
+        return viewCache.getView(viewId: viewId)
     }
 
     public func findFirstOverlayOfType<T: DataCaptureOverlay>() -> T? {
-        topmostDataCaptureView?.findFirstOfType()
+        return topmostDataCaptureView?.findFirstOfType()
     }
 }

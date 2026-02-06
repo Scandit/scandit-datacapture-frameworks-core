@@ -11,7 +11,7 @@ open class FrameworksFrameSourceListener: NSObject {
     private let frameSourceStateChangedEvent = Event(.frameSourceStateChanged)
     private let torchStateChangedEvent = Event(.torchStateChanged)
 
-    private var isEnabled = AtomicValue<Bool>()
+    private var isEnabled = AtomicBool()
 
     public init(eventEmitter: Emitter) {
         self.eventEmitter = eventEmitter
@@ -28,14 +28,8 @@ open class FrameworksFrameSourceListener: NSObject {
 
 extension FrameworksFrameSourceListener: FrameSourceListener {
     public func frameSource(_ source: FrameSource, didChange newState: FrameSourceState) {
-        var payload = ["state": newState.jsonString]
-
-        if let camera = source as? Camera {
-            payload["cameraPosition"] = camera.position.jsonString
-        }
-
         guard isEnabled.value, eventEmitter.hasListener(for: frameSourceStateChangedEvent) else { return }
-        frameSourceStateChangedEvent.emit(on: eventEmitter, payload: payload)
+        frameSourceStateChangedEvent.emit(on: eventEmitter, payload: ["state": newState.jsonString])
     }
 
     public func frameSource(_ source: FrameSource, didOutputFrame frame: FrameData) {}

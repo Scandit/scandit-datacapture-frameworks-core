@@ -13,18 +13,20 @@ public class DefaultAdvancedOverlayViewCache: AdvancedOverlayViewCache {
     public init() {}
 
     public func getOrCreateView(fromImage image: UIImage, withIdentifier viewIdentifier: String) -> UIImageView? {
-        var imageView: UIImageView
-        if let existingView = self.views[viewIdentifier] {
-            imageView = existingView
-            imageView.image = image
-        } else {
-            imageView = self.createImageView(with: image, viewIdentifier: viewIdentifier)
+        let block: () -> UIImageView? = {
+            var imageView: UIImageView
+            if self.views.keys.contains(viewIdentifier) {
+                imageView = self.views[viewIdentifier]!
+                imageView.image = image
+            } else {
+                imageView = self.createImageView(with: image, viewIdentifier:  viewIdentifier)
+            }
+            return imageView
         }
-        return imageView
+        return dispatchMainSync(block)
     }
 
-    public func getOrCreateView(fromBase64EncodedData data: Data, withIdentifier viewIdentifier: String) -> UIImageView?
-    {
+    public func getOrCreateView(fromBase64EncodedData data: Data, withIdentifier viewIdentifier: String) -> UIImageView? {
         guard let image = parse(data: data) else { return nil }
         return getOrCreateView(fromImage: image, withIdentifier: viewIdentifier)
     }
@@ -44,10 +46,8 @@ public class DefaultAdvancedOverlayViewCache: AdvancedOverlayViewCache {
     private func createImageView(with image: UIImage, viewIdentifier: String) -> UIImageView {
         let imageView = UIImageView(image: image)
         let scale = UIScreen.main.scale
-        imageView.frame.size = CGSize(
-            width: imageView.frame.size.width / scale,
-            height: imageView.frame.size.height / scale
-        )
+        imageView.frame.size = CGSize(width: imageView.frame.size.width / scale,
+                                      height: imageView.frame.size.height / scale)
         self.views[viewIdentifier] = imageView
         return imageView
     }
