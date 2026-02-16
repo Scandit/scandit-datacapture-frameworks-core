@@ -20,7 +20,10 @@ public extension DefaultsEncodable {
             Log.error(error)
             fatalError()
         }
-        let string = String(data: data, encoding: .utf8)!
+        guard let string = String(data: data, encoding: .utf8) else {
+            Log.error("Failed to encode defaults to UTF8 string")
+            return "{}"
+        }
         return string
     }
 }

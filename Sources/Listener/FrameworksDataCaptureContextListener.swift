@@ -12,7 +12,7 @@ open class FrameworksDataCaptureContextListener: NSObject {
     private let observationStartedEvent = Event(.contextObservingStarted)
     private let didChangeStatusEvent = Event(.contextStatusChanged)
 
-    private var isEnabled = AtomicBool()
+    private var isEnabled = AtomicValue<Bool>()
 
     public init(eventEmitter: Emitter) {
         self.eventEmitter = eventEmitter

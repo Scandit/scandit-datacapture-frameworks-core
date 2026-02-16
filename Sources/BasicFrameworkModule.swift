@@ -8,7 +8,7 @@ import Foundation
 import ScanditCaptureCore
 
 // This class should be used only by the old modes that don't have a specific view.
-open class BasicFrameworkModule<T: DataCaptureMode>: NSObject, FrameworkModule {
+open class BasicFrameworkModule<T>: NSObject, FrameworkModule {
 
     private var postModeCreationActions: [Int: [() -> Void]] = [:]
     private var modesCache: [Int: T] = [:]
@@ -22,6 +22,11 @@ open class BasicFrameworkModule<T: DataCaptureMode>: NSObject, FrameworkModule {
 
     open func didStop() {
         // Implementation to be provided by subclasses
+    }
+
+    open func getDefaults() -> [String: Any?] {
+        // Implementation to be provided by subclasses
+        [:]
     }
 
     // MARK: - Mode Cache Management
@@ -46,6 +51,15 @@ open class BasicFrameworkModule<T: DataCaptureMode>: NSObject, FrameworkModule {
         defer { objc_sync_exit(self) }
 
         return Array(modesCache.values)
+    }
+
+    public func getModeFromCacheByParent(_ parentId: Int) -> FrameworksBaseMode? {
+        objc_sync_enter(self)
+        defer { objc_sync_exit(self) }
+
+        return getAllModesInCache().compactMap { $0 as? FrameworksBaseMode }.first { mode in
+            mode.parentId == parentId
+        }
     }
 
     public func removeModeFromCache(_ modeId: Int) -> T? {
@@ -80,6 +94,16 @@ open class BasicFrameworkModule<T: DataCaptureMode>: NSObject, FrameworkModule {
         postModeCreationActions[modeId]?.append(action)
     }
 
+    public func addPostModeCreationActionByParent(_ parentId: Int, action: @escaping () -> Void) {
+        objc_sync_enter(self)
+        defer { objc_sync_exit(self) }
+
+        if postModeCreationActions[parentId] == nil {
+            postModeCreationActions[parentId] = []
+        }
+        postModeCreationActions[parentId]?.append(action)
+    }
+
     public func removeAllModesFromCache() {
         objc_sync_enter(self)
         defer { objc_sync_exit(self) }
@@ -102,6 +126,20 @@ open class BasicFrameworkModule<T: DataCaptureMode>: NSObject, FrameworkModule {
         return actions
     }
 
+    public func getPostModeCreationActionsByParent(_ parentId: Int) -> [() -> Void] {
+        objc_sync_enter(self)
+        defer { objc_sync_exit(self) }
+
+        var actions: [() -> Void] = []
+
+        if let modeActions = postModeCreationActions[parentId] {
+            actions.append(contentsOf: modeActions)
+            postModeCreationActions[parentId] = []
+        }
+
+        return actions
+    }
+
     public func clearPostModeCreationActions(_ modeId: Int?) {
         objc_sync_enter(self)
         defer { objc_sync_exit(self) }
@@ -112,4 +150,9 @@ open class BasicFrameworkModule<T: DataCaptureMode>: NSObject, FrameworkModule {
             postModeCreationActions.removeAll()
         }
     }
+
+    open func createCommand(_ method: any FrameworksMethodCall) -> (any BaseCommand)? {
+        nil
+    }
+
 }
