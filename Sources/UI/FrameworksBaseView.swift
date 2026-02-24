@@ -8,6 +8,5 @@ import Foundation
 
 public protocol FrameworksBaseView {
     var viewId: Int { get }
-    var parentId: Int? { get }
     func dispose()
 }

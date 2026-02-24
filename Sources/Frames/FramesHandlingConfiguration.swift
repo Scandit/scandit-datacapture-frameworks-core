@@ -11,14 +11,12 @@ public class FramesHandlingConfiguration {
 
     let isFileSystemCacheEnabled: Bool
     let imageQuality: Int
-    let autoRotateImages: Bool
 
-    init(isFileSystemCacheEnabled: Bool, imageQuality: Int, autoRotateImages: Bool) {
+    init(isFileSystemCacheEnabled: Bool, imageQuality: Int) {
         self.isFileSystemCacheEnabled = isFileSystemCacheEnabled
         self.imageQuality = imageQuality
-        self.autoRotateImages = autoRotateImages
     }
-
+    
     public static func create(
         contextCreationJson: String
     ) -> FramesHandlingConfiguration {
@@ -30,22 +28,14 @@ public class FramesHandlingConfiguration {
                     with: jsonData,
                     options: []
                 ) as? [String: Any],
-                    let settingsJson = json["settings"] as? [String: Any]
-                {
-
-                    guard let frameSettings = settingsJson["frameDataSettings"] as? [String: Any] else {
-                        return createDefaultConfiguration()
-                    }
-
-                    let isFileSystemCacheEnabled = frameSettings["sc_frame_isFileSystemCacheEnabled"] as? Bool ?? false
-                    let imageQuality = frameSettings["sc_frame_imageQuality"] as? Int ?? 100
-                    let autoRotateImages = frameSettings["sc_frame_autoRotate"] as? Bool ?? false
-
+                   let settingsJson = json["settings"] as? [String: Any] {
+                    
+                    let isFileSystemCacheEnabled = settingsJson["sc_frame_isFileSystemCacheEnabled"] as? Bool ?? false
+                    let imageQuality = settingsJson["sc_frame_imageQuality"] as? Int ?? 100
+                    
                     return FramesHandlingConfiguration(
                         isFileSystemCacheEnabled: isFileSystemCacheEnabled,
-                        imageQuality: imageQuality,
-                        autoRotateImages: autoRotateImages
-
+                        imageQuality: imageQuality
                     )
                 }
             } catch {
@@ -54,15 +44,10 @@ public class FramesHandlingConfiguration {
                 )
             }
         }
-
-        return createDefaultConfiguration()
-    }
-
-    public static func createDefaultConfiguration() -> FramesHandlingConfiguration {
-        FramesHandlingConfiguration(
+        
+        return FramesHandlingConfiguration(
             isFileSystemCacheEnabled: false,
-            imageQuality: 100,
-            autoRotateImages: false
+            imageQuality: 100
         )
     }
 }

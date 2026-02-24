@@ -51,7 +51,7 @@ public enum ScanditFrameworksCoreError: Error, CustomNSError {
             if let error = error {
                 message = "An internal deserialization error happened:\n\(error.localizedDescription)"
             } else {
-                message = "Unable to deserialize the following JSON:\n\(json ?? "null")"
+                message = "Unable to deserialize the following JSON:\n\(json!)"
             }
             return message
         case .cameraNotReadyError:
@@ -67,62 +67,44 @@ public enum ScanditFrameworksCoreError: Error, CustomNSError {
 }
 
 open class CoreModule: NSObject, FrameworkModule {
-    private let emitter: Emitter
     private let frameSourceDeserializer: FrameworksFrameSourceDeserializer
     private let frameSourceListener: FrameworksFrameSourceListener
     private let dataCaptureContextListener: FrameworksDataCaptureContextListener
+    private let dataCaptureViewListener: FrameworksDataCaptureViewListener
     private let contextLock = DispatchSemaphore(value: 1)
     private let captureContext = DefaultFrameworksCaptureContext.shared
-    private let frameSourceHandler: FrameSourceHandler
+    private let viewDeserializer = DataCaptureViewDeserializer(modeDeserializers: [])
 
-    public init(
-        emitter: Emitter,
-        frameSourceDeserializer: FrameworksFrameSourceDeserializer,
-        frameSourceListener: FrameworksFrameSourceListener,
-        dataCaptureContextListener: FrameworksDataCaptureContextListener,
-        frameSourceHandler: FrameSourceHandler
-    ) {
-        self.emitter = emitter
+    public init(frameSourceDeserializer: FrameworksFrameSourceDeserializer,
+                frameSourceListener: FrameworksFrameSourceListener,
+                dataCaptureContextListener: FrameworksDataCaptureContextListener,
+                dataCaptureViewListener: FrameworksDataCaptureViewListener) {
         self.frameSourceDeserializer = frameSourceDeserializer
         self.frameSourceListener = frameSourceListener
         self.dataCaptureContextListener = dataCaptureContextListener
-        self.frameSourceHandler = frameSourceHandler
+        self.dataCaptureViewListener = dataCaptureViewListener
     }
 
-    public static func create(emitter: Emitter) -> CoreModule {
-        let frameSourceListener = FrameworksFrameSourceListener(eventEmitter: emitter)
-        let frameSourceHandler = DefaultFrameSourceHandler(frameSourceListener: frameSourceListener)
-        let frameSourceDeserializer = FrameworksFrameSourceDeserializer(frameSourceHandler: frameSourceHandler)
-
-        return CoreModule(
-            emitter: emitter,
-            frameSourceDeserializer: frameSourceDeserializer,
-            frameSourceListener: frameSourceListener,
-            dataCaptureContextListener: FrameworksDataCaptureContextListener(eventEmitter: emitter),
-            frameSourceHandler: frameSourceHandler
-        )
+    var dataCaptureView: DataCaptureView? {
+        return DataCaptureViewHandler.shared.topmostDataCaptureView
     }
 
-    public func getDefaults() -> [String: Any?] {
-        CoreDefaults.shared.toEncodable()
-    }
+    public let defaults: DefaultsEncodable = CoreDefaults.shared
 
-    public func createContextFromJson(contextJson: String, result: FrameworksResult) {
+    public func createContextFromJSON(_ json: String, result: FrameworksResult) {
         do {
             self.contextLock.wait()
             defer { self.contextLock.signal() }
-
+            
             let _ = try captureContext.initialize(
-                json: contextJson,
+                json: json,
                 frameSourceListener: frameSourceListener,
                 frameSourceDeserializerListener: frameSourceDeserializer,
                 dataCaptureContextListener: dataCaptureContextListener
             )
-
-            LastFrameData.shared.configure(
-                configuration: FramesHandlingConfiguration.create(contextCreationJson: contextJson)
-            )
-
+            
+            LastFrameData.shared.configure(configuration: FramesHandlingConfiguration.create(contextCreationJson: json))
+            
             result.success()
         } catch {
             Log.error("Error occurred: \n")
@@ -131,17 +113,15 @@ open class CoreModule: NSObject, FrameworkModule {
         }
     }
 
-    public func updateContextFromJson(contextJson: String, result: FrameworksResult) {
+    public func updateContextFromJSON(_ json: String, result: FrameworksResult) {
         do {
             self.contextLock.wait()
             defer { self.contextLock.signal() }
-
-            try captureContext.update(json: contextJson)
-
-            LastFrameData.shared.configure(
-                configuration: FramesHandlingConfiguration.create(contextCreationJson: contextJson)
-            )
-
+            
+            try captureContext.update(json: json)
+            
+            LastFrameData.shared.configure(configuration: FramesHandlingConfiguration.create(contextCreationJson: json))
+            
             result.success(result: nil)
         } catch {
             Log.error("Error occurred: \n")
@@ -149,7 +129,7 @@ open class CoreModule: NSObject, FrameworkModule {
             result.reject(error: ScanditFrameworksCoreError.deserializationError(error: error, json: nil))
         }
     }
-
+    
     func jsonStringContainsKey(_ jsonString: String, key: String) -> Bool {
         guard let jsonData = jsonString.data(using: .utf8) else {
             // Failed to convert the string to data
@@ -168,9 +148,9 @@ open class CoreModule: NSObject, FrameworkModule {
         return false
     }
 
-    public func emitFeedback(feedbackJson: String, result: FrameworksResult) {
+    public func emitFeedback(json: String, result: FrameworksResult) {
         do {
-            let feedback = try Feedback(fromJSONString: feedbackJson)
+            let feedback = try Feedback(fromJSONString: json)
             feedback.emit()
 
             dispatchMain {
@@ -183,81 +163,96 @@ open class CoreModule: NSObject, FrameworkModule {
         }
     }
 
-    public func viewPointForFramePoint(viewId: Int, pointJson: String, result: FrameworksResult) {
+    public func viewPointForFramePoint(json: String, result: FrameworksResult) {
         let block = { [weak self] in
-            guard self != nil else {
+            guard let self = self else {
                 Log.error("Self was nil while trying to create the context.")
                 result.reject(error: ScanditFrameworksCoreError.nilSelf)
                 return
             }
-            guard let frameworksDataCaptureView = DataCaptureViewHandler.shared.getView(viewId) else {
+            guard let dataCaptureView = self.dataCaptureView else {
                 result.reject(error: ScanditFrameworksCoreError.nilDataCaptureView)
                 return
             }
-
-            let viewPoint = frameworksDataCaptureView.mapFramePointToView(jsonString: pointJson)
-            result.success(result: viewPoint?.jsonString)
+            guard let point = CGPoint(json: json) else {
+                Log.error(ScanditFrameworksCoreError.deserializationError(error: nil, json: json))
+                result.reject(error: ScanditFrameworksCoreError.deserializationError(error: nil, json: json))
+                return
+            }
+            let viewPoint = dataCaptureView.viewPoint(forFramePoint: point)
+            result.success(result: viewPoint.jsonString)
         }
         dispatchMain(block)
     }
 
-    public func viewQuadrilateralForFrameQuadrilateral(viewId: Int, quadrilateralJson: String, result: FrameworksResult)
-    {
+    public func viewQuadrilateralForFrameQuadrilateral(json: String, result: FrameworksResult) {
         let block = { [weak self] in
-            guard self != nil else {
+            guard let self = self else {
                 Log.error("Self was nil while trying to create the context.")
                 result.reject(error: ScanditFrameworksCoreError.nilSelf)
                 return
             }
-            guard let frameworksDataCaptureView = DataCaptureViewHandler.shared.getView(viewId) else {
+            guard let dataCaptureView = self.dataCaptureView else {
                 result.reject(error: ScanditFrameworksCoreError.nilDataCaptureView)
                 return
             }
-            let viewQuad = frameworksDataCaptureView.mapFrameQuadrilateralToView(jsonString: quadrilateralJson)
-            result.success(result: viewQuad?.jsonString)
+            var quadrilateral = Quadrilateral()
+            guard SDCQuadrilateralFromJSONString(json, &quadrilateral) else {
+                Log.error(ScanditFrameworksCoreError.deserializationError(error: nil, json: json))
+                result.reject(error: ScanditFrameworksCoreError.deserializationError(error: nil, json: json))
+                return
+            }
+            let viewQuad = dataCaptureView.viewQuadrilateral(forFrameQuadrilateral: quadrilateral)
+            result.success(result: viewQuad.jsonString)
         }
         dispatchMain(block)
     }
-
+    
     public func getCurrentCameraState(result: FrameworksResult) {
-        guard let cameraState = frameSourceHandler.currentCameraState else {
+        guard let camera = frameSourceDeserializer.camera else {
             Log.error(ScanditFrameworksCoreError.cameraNotReadyError)
             result.reject(error: ScanditFrameworksCoreError.cameraNotReadyError)
             return
         }
-        result.success(result: cameraState.jsonString)
+        result.success(result: camera.currentState.jsonString)
     }
 
     public func getCameraState(cameraPosition: String, result: FrameworksResult) {
-        guard let cameraState = frameSourceHandler.getCameraStateByPosition(cameraPosition: cameraPosition) else {
+        var position = CameraPosition.unspecified
+        SDCCameraPositionFromJSONString(cameraPosition, &position)
+        guard let camera = frameSourceDeserializer.camera, camera.position == position else {
             Log.error(ScanditFrameworksCoreError.cameraNotReadyError)
             result.reject(error: ScanditFrameworksCoreError.cameraNotReadyError)
             return
         }
-        result.success(result: cameraState.jsonString)
+        result.success(result: camera.currentState.jsonString)
     }
 
     public func isTorchAvailable(cameraPosition: String, result: FrameworksResult) {
-        guard let isTorchAvailable = frameSourceHandler.getIsTorchAvailableByPosition(cameraPosition: cameraPosition)
-        else {
+        guard let camera = frameSourceDeserializer.camera else {
             Log.error(ScanditFrameworksCoreError.cameraNotReadyError)
             result.reject(error: ScanditFrameworksCoreError.cameraNotReadyError)
             return
         }
-
-        result.success(result: isTorchAvailable)
+        var position = CameraPosition.unspecified
+        SDCCameraPositionFromJSONString(cameraPosition, &position)
+        guard camera.position == position else {
+            Log.error(ScanditFrameworksCoreError.wrongCameraPosition)
+            result.reject(error: ScanditFrameworksCoreError.wrongCameraPosition)
+            return
+        }
+        result.success(result: camera.isTorchAvailable)
     }
 
-    public func disposeContext(result: FrameworksResult) {
+    public func disposeContext() {
         self.contextLock.wait()
         defer { self.contextLock.signal() }
-
+        
         removeAllViews()
         captureContext.release(dataCaptureContextListener: dataCaptureContextListener)
-        frameSourceHandler.releaseCamera()
+        frameSourceDeserializer.releaseCurrentCamera()
         LastFrameData.shared.release()
         DeserializationLifeCycleDispatcher.shared.dispatchDataCaptureContextDisposed()
-        result.success()
     }
 
     public func didStart() {
@@ -267,66 +262,50 @@ open class CoreModule: NSObject, FrameworkModule {
     public func didStop() {
         DeserializationLifeCycleDispatcher.shared.detach(observer: self)
         Deserializers.Factory.clearDeserializers()
-        disposeContext(result: NoopFrameworksResult())
+        disposeContext()
     }
 
-    public func subscribeContextListener(result: FrameworksResult) {
+    public func registerDataCaptureContextListener() {
         dataCaptureContextListener.enable()
-        result.success()
     }
 
-    public func unsubscribeContextListener(result: FrameworksResult) {
+    public func unregisterDataCaptureContextListener() {
         dataCaptureContextListener.disable()
-        result.success()
     }
 
-    public func registerListenerForViewEvents(viewId: Int, result: FrameworksResult) {
-        if let frameworksView = DataCaptureViewHandler.shared.getView(viewId) {
-            frameworksView.registerDataCaptureViewListener()
-        }
-        result.success()
+    public func registerDataCaptureViewListener() {
+        dataCaptureViewListener.enable()
     }
 
-    public func unregisterListenerForViewEvents(viewId: Int, result: FrameworksResult) {
-        if let frameworksView = DataCaptureViewHandler.shared.getView(viewId) {
-            frameworksView.unregisterDataCaptureViewListener()
-        }
-        result.success()
+    public func unregisterDataCaptureViewListener() {
+        dataCaptureViewListener.disable()
     }
 
-    public func unregisterTopmostDataCaptureViewListener() {
-        if let frameworksView = DataCaptureViewHandler.shared.topmostDataCaptureView {
-            frameworksView.unregisterDataCaptureViewListener()
-        }
-    }
-
-    public func registerFrameSourceListener(result: FrameworksResult) {
+    public func registerFrameSourceListener() {
         frameSourceListener.enable()
-        result.successAndKeepCallback(result: nil)
     }
 
-    public func unregisterFrameSourceListener(result: FrameworksResult) {
+    public func unregisterFrameSourceListener() {
         frameSourceListener.disable()
-        result.success(result: nil)
     }
-
+    
     public func switchCameraToDesiredState(stateJson: String, result: FrameworksResult) {
         var state = FrameSourceState.off
         SDCFrameSourceStateFromJSONString(stateJson, &state)
-        frameSourceHandler.switchCameraToState(newState: state) { success in
-            if success {
+        frameSourceDeserializer.switchCameraToState(newState: state) { success in
+            if (success) {
                 result.success(result: nil)
             } else {
                 result.reject(code: "-1", message: "Unable to switch the camera to \(stateJson).", details: nil)
             }
         }
     }
-
+    
     public func addModeToContext(modeJson: String, result: FrameworksResult) {
         do {
-            try DeserializationLifeCycleDispatcher.shared.dispatchAddModeToContext(modeJson: modeJson)
+            try  DeserializationLifeCycleDispatcher.shared.dispatchAddModeToContext(modeJson: modeJson)
             result.success(result: nil)
-        } catch {
+        } catch  {
             result.reject(error: error)
         }
     }
@@ -340,191 +319,177 @@ open class CoreModule: NSObject, FrameworkModule {
     public func removeAllModes(result: FrameworksResult) {
         captureContext.removeAllModes()
         DeserializationLifeCycleDispatcher.shared.dispatchAllModesRemovedFromContext()
-        LastFrameData.shared.release()
         result.success(result: nil)
     }
-
-    public func createDataCaptureView(
-        viewJson: String,
-        result: FrameworksResult,
-        viewId: Int = 0,
-        completion: ((DataCaptureView?) -> Void)? = nil
-    ) {
+    
+    public func createDataCaptureView(viewJson: String, result: FrameworksResult, viewId: Int = 0) -> DataCaptureView? {
         guard let dcContext = captureContext.context else {
             result.reject(error: ScanditFrameworksCoreError.nilDataCaptureContext)
-            completion?(nil)
-            return
+            return nil
         }
-
-        let creationData = DataCaptureViewCreationData.fromJson(viewJson)
-
-        if let existingview = DataCaptureViewHandler.shared.getView(creationData.viewId) {
-            result.success(result: nil)
-            completion?(existingview.view)
-            return
+        
+        let overlays = getOverlaysFromViewJson(viewJson)
+        // remove the overlays key so that the native sdk will not handle them
+        guard let dataCaptureViewJson = removeJsonKey(from: viewJson, key: "overlays") else {
+            result.reject(error: ScanditFrameworksCoreError.deserializationError(error: nil, json: viewJson))
+            return nil
         }
-
-        dispatchMain { [weak self] in
-            guard let self = self else {
-                completion?(nil)
-                return
-            }
-
-            do {
-
-                let frameworksView = try FrameworksDataCaptureView.create(
-                    emitter: self.emitter,
-                    dataCaptureContext: dcContext,
-                    creationData: creationData
-                )
-
-                DataCaptureViewHandler.shared.addView(frameworksView)
-                DeserializationLifeCycleDispatcher.shared.dispatchDataCaptureViewDeserialized(view: frameworksView.view)
-
-                // Handle overlays
-                for overlay in creationData.overlaysJson {
-                    try DeserializationLifeCycleDispatcher.shared.dispatchAddOverlayToView(
-                        view: frameworksView,
-                        overlayJson: overlay
-                    )
-                }
-
+        if viewId > 0 {
+            if let existingview = DataCaptureViewHandler.shared.getViewById(viewId) {
                 result.success(result: nil)
-                completion?(frameworksView.view)
+                return existingview
+            }
+        }
+        
+        return dispatchMainSync { () -> DataCaptureView? in
+            do {
+                let view = try viewDeserializer.view(fromJSONString: dataCaptureViewJson, with: dcContext)
+                view.addListener(dataCaptureViewListener)
+                DataCaptureViewHandler.shared.addView(view, withId: viewId)
+                DeserializationLifeCycleDispatcher.shared.dispatchDataCaptureViewDeserialized(view: view)
+                
+                // add overlays
+                for overlay in overlays {
+                    // Add new overlays
+                    try DeserializationLifeCycleDispatcher.shared.dispatchAddOverlayToView(view: view, overlayJson: overlay)
+                }
+                result.success(result: nil)
+                return view
             } catch {
                 result.reject(error: error)
-                completion?(nil)
+                return nil
             }
         }
     }
 
     public func updateDataCaptureView(viewJson: String, result: FrameworksResult) {
         let block = { [weak self] in
-            guard self != nil else {
+            guard let self = self else {
                 Log.error("Self was nil while trying to create the context.")
                 result.reject(error: ScanditFrameworksCoreError.nilSelf)
                 return
             }
-
-            let updateData = DataCaptureViewCreationData.fromJson(viewJson)
-
-            guard let frameworksView = DataCaptureViewHandler.shared.getView(updateData.viewId) else {
+            guard let view = self.dataCaptureView else {
+                // if the view was not created yet, when it will be created it will just be the updated one
                 result.success()
                 return
             }
+        
+            let overlays = self.getOverlaysFromViewJson(viewJson)
+            // remove the overlays key so that the native sdk will not handle them
+            guard let dataCaptureViewJson = self.removeJsonKey(from: viewJson, key: "overlays") else {
+                result.reject(error: ScanditFrameworksCoreError.deserializationError(error: nil, json: viewJson))
+                return
+            }
+            
+            // update view
             do {
-
-                try frameworksView.updateView(updateData: updateData)
-
-                // Handle overlays
-                frameworksView.removeAllOverlays()
-
-                for overlay in updateData.overlaysJson {
-                    try DeserializationLifeCycleDispatcher.shared.dispatchAddOverlayToView(
-                        view: frameworksView,
-                        overlayJson: overlay
-                    )
-                }
-                result.success()
+                try self.viewDeserializer.update(view, fromJSONString: dataCaptureViewJson)
             } catch {
                 result.reject(error: error)
+                return
             }
+
+            // remove existing overlays
+            DataCaptureViewHandler.shared.removeAllOverlaysFromView(view)
+            
+            // add overlays
+            do {
+                for overlay in overlays {
+                    // Add new overlays
+                    try DeserializationLifeCycleDispatcher.shared.dispatchAddOverlayToView(view: view, overlayJson: overlay)
+                }
+                result.success(result: nil)
+            } catch  {
+                result.reject(error: error)
+            }
+                
         }
         dispatchMain(block)
     }
+    
+    private func getOverlaysFromViewJson(_ viewJson: String) -> [String] {
+        var overlays = [String]()
 
+        if let data = viewJson.data(using: .utf8),
+           let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+            
+            if let overlaysJson = json["overlays"] as? [[String: Any]] {
+                for overlay in overlaysJson {
+                    if let overlayData = try? JSONSerialization.data(withJSONObject: overlay, options: []),
+                       let overlayString = String(data: overlayData, encoding: .utf8) {
+                        overlays.append(overlayString)
+                    }
+                }
+            }
+        }
+
+        return overlays
+    }
+    
     private func removeJsonKey(from jsonString: String, key: String) -> String? {
         guard let data = jsonString.data(using: .utf8) else {
             return nil
         }
-
+        
         guard var json = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else {
             return nil
         }
-
+        
         json.removeValue(forKey: key)
-
+        
         guard let updatedData = try? JSONSerialization.data(withJSONObject: json, options: []),
-            let updatedJsonString = String(data: updatedData, encoding: .utf8)
-        else {
+              let updatedJsonString = String(data: updatedData, encoding: .utf8) else {
             return nil
         }
-
+        
         return updatedJsonString
     }
 
     public func dataCaptureViewDisposed(_ dataCaptureView: DataCaptureView) {
-        dispatchMain {
-            DataCaptureViewHandler.shared.removeView(dataCaptureView.tag)
+        dataCaptureView.removeListener(dataCaptureViewListener)
+        if let _ = DataCaptureViewHandler.shared.removeView(dataCaptureView) {
+            dispatchMain {
+                dataCaptureView.removeFromSuperview()
+            }
         }
     }
-
+    
     public func disposeDataCaptureView() {
         removeTopMostDataCaptureView()
     }
 
     private func removeTopMostDataCaptureView() {
-        dispatchMain {
-            _ = DataCaptureViewHandler.shared.removeTopmostView()
+        if let view = DataCaptureViewHandler.shared.removeTopmostView() {
+            dispatchMain {
+                view.removeFromSuperview()
+            }
+            view.removeListener(dataCaptureViewListener)
         }
     }
-
+    
     private func removeAllViews() {
-        dispatchMain {
-            DataCaptureViewHandler.shared.removeAllViews()
+        for view in DataCaptureViewHandler.shared.removeAllViews() {
+            view.removeListener(dataCaptureViewListener)
         }
     }
-
+    
     public func getOpenSourceSoftwareLicenseInfo(result: FrameworksResult) {
         result.success(result: DataCaptureContext.openSourceSoftwareLicenseInfo.licenseText)
     }
-
+    
     public func getLastFrameAsJson(frameId: String, result: FrameworksResult) {
         LastFrameData.shared.getLastFrameDataJSON(frameId: frameId) {
             result.success(result: $0)
         }
     }
-
-    public func getLastFrameOrNullAsJson(frameId: String, result: FrameworksResult) {
-        LastFrameData.shared.getLastFrameDataJSON(frameId: frameId) {
-            result.success(result: $0)
-        }
-    }
-
-    public func getLastFrameOrNullAsMap(frameId: String, result: FrameworksResult) {
-        LastFrameData.shared.getLastFrameDataBytes(frameId: frameId) {
-            result.success(result: $0)
-        }
-    }
-
-    public func createCommand(_ method: any FrameworksMethodCall) -> (any BaseCommand)? {
-        CoreModuleCommandFactory.create(module: self, method)
-    }
-
-    /// Single dispatcher for all Core commands.
-    /// Creates command from method call and executes it.
-    /// - Parameter method: The method call containing method name and parameters
-    /// - Parameter result: The result handler for async responses
-    /// - Returns: true if the method was handled, false if unknown
-    public func execute(
-        _ method: FrameworksMethodCall,
-        result: FrameworksResult,
-        module: FrameworkModule
-    ) -> Bool {
-        guard let command = module.createCommand(method) else {
-            return false
-        }
-        command.execute(result: result)
-        return true
-    }
 }
 
 extension CoreModule: DeserializationLifeCycleObserver {
     public func dataCaptureView(removed view: DataCaptureView) {
-        dispatchMain {
-            DataCaptureViewHandler.shared.removeView(view.tag)
-            // dispatch that the view has been removed
-            DeserializationLifeCycleDispatcher.shared.dispatchDataCaptureViewDeserialized(view: nil)
-        }
+        view.removeListener(dataCaptureViewListener)
+        _ = DataCaptureViewHandler.shared.removeView(view)
+        // dispatch that the view has been removed
+        DeserializationLifeCycleDispatcher.shared.dispatchDataCaptureViewDeserialized(view: nil)
     }
 }
