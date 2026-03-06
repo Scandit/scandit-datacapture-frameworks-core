@@ -28,21 +28,18 @@ open class FrameworksDataCaptureViewListener: NSObject {
 }
 
 extension FrameworksDataCaptureViewListener: DataCaptureViewListener {
-    public func dataCaptureView(
-        _ view: DataCaptureView,
-        didChange size: CGSize,
-        orientation: UIInterfaceOrientation
-    ) {
+    public func dataCaptureView(_ view: DataCaptureView,
+                                didChange size: CGSize,
+                                orientation: UIInterfaceOrientation) {
         guard isEnabled.value, eventEmitter.hasListener(for: event) else { return }
-        let payload =
-            [
-                "viewId": self.viewId,
-                "size": [
-                    "width": size.width,
-                    "height": size.height,
-                ],
-                "orientation": orientation.jsonString,
-            ] as [String: Any]
+        let payload = [
+            "viewId": self.viewId,
+            "size": [
+                "width": size.width,
+                "height": size.height
+            ],
+            "orientation": orientation.jsonString
+        ] as [String: Any]
         event.emit(on: eventEmitter, payload: payload)
     }
 }
