@@ -13,8 +13,12 @@ public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
     private var internalParentId: Int? = nil
 
     private var viewOverlays: [DataCaptureOverlay] = []
+    private var overlayKeyMap: [String: DataCaptureOverlay] = [:]
+    private var pendingOverlayKey: String?
 
     private var viewListener: FrameworksDataCaptureViewListener?
+    private var focusGestureListener: FrameworksFocusGestureListener?
+    private var zoomGestureListener: FrameworksZoomGestureListener?
 
     public var view: DataCaptureView?
 
@@ -30,6 +34,26 @@ public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
         viewOverlays
     }
 
+    var overlayKeys: Set<String> { Set(overlayKeyMap.keys) }
+
+    func setPendingOverlayKey(_ key: String) {
+        pendingOverlayKey = key
+    }
+
+    func removeOverlayByKey(_ key: String) {
+        guard let overlay = overlayKeyMap.removeValue(forKey: key) else { return }
+        removeOverlay(overlay)
+    }
+
+    func removeExistingOverlaysOfType(_ type: String, excludingKey key: String) {
+        let conflictingKeys = overlayKeyMap.keys.filter { existingKey in
+            existingKey != key && existingKey.hasPrefix("\(type):")
+        }
+        for conflictingKey in conflictingKeys {
+            removeOverlayByKey(conflictingKey)
+        }
+    }
+
     private let emitter: Emitter
     private let viewDeserializer: DataCaptureViewDeserializer
 
@@ -40,6 +64,10 @@ public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
 
     public func addOverlay(_ overlay: DataCaptureOverlay) {
         viewOverlays.append(overlay)
+        if let key = pendingOverlayKey {
+            overlayKeyMap[key] = overlay
+            pendingOverlayKey = nil
+        }
         dispatchMain { [weak self] in
             guard let self else { return }
             self.view?.addOverlay(overlay)
@@ -62,15 +90,25 @@ public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
         for overlay in overlaysCopy {
             removeOverlay(overlay)
         }
+        overlayKeyMap.removeAll()
     }
 
     public func dispose() {
         dispatchMain { [weak self] in
             guard let self else { return }
             self.removeAllOverlays()
+            self.overlayKeyMap.removeAll()
             if let viewListener = self.viewListener {
                 self.view?.removeListener(viewListener)
             }
+            if let focusGestureListener = focusGestureListener {
+                view?.focusGesture?.remove(focusGestureListener)
+            }
+            focusGestureListener = nil
+            if let zoomGestureListener = zoomGestureListener {
+                self.view?.zoomGesture?.remove(zoomGestureListener)
+            }
+            zoomGestureListener = nil
             self.viewListener = nil
             self.view?.removeFromSuperview()
             self.view = nil
@@ -128,8 +166,62 @@ public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
         viewListener?.disable()
     }
 
+    public func registerFocusGestureListener(_ listener: FrameworksFocusGestureListener) {
+        focusGestureListener = listener
+        DispatchQueue.main.async {
+            self.view?.focusGesture?.add(listener)
+        }
+    }
+
+    public func unregisterFocusGestureListener() {
+        if let focusGestureListener = focusGestureListener {
+            DispatchQueue.main.async {
+                self.view?.focusGesture?.remove(focusGestureListener)
+            }
+        }
+        focusGestureListener = nil
+    }
+
+    public func registerZoomGestureListener(_ listener: FrameworksZoomGestureListener) {
+        zoomGestureListener = listener
+        DispatchQueue.main.async {
+            self.view?.zoomGesture?.add(listener)
+        }
+    }
+
+    public func unregisterZoomGestureListener() {
+        if let zoomGestureListener = zoomGestureListener {
+            DispatchQueue.main.async {
+                self.view?.zoomGesture?.remove(zoomGestureListener)
+            }
+        }
+        zoomGestureListener = nil
+    }
+
     public func findFirstOfType<T: DataCaptureOverlay>() -> T? {
         overlays.first { $0 is T } as? T
+    }
+
+    public func triggerFocus(pointJson: String) {
+        var point = PointWithUnit.zero
+        guard SDCPointWithUnitFromJSONString(pointJson, &point) else {
+            return
+        }
+        DispatchQueue.main.async {
+            self.view?.focusGesture?.triggerFocus(point)
+        }
+    }
+
+    public func triggerZoomIn() {
+        DispatchQueue.main.async {
+            self.view?.zoomGesture?.triggerZoomIn()
+        }
+    }
+
+    public func triggerZoomOut() {
+        DispatchQueue.main.async {
+            self.view?.zoomGesture?.triggerZoomOut()
+        }
     }
 
     // MARK: - Factory method

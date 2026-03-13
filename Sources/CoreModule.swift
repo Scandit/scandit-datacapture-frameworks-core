@@ -66,7 +66,7 @@ public enum ScanditFrameworksCoreError: Error, CustomNSError {
     }
 }
 
-open class CoreModule: NSObject, FrameworkModule {
+open class CoreModule: BaseFrameworkModule {
     private let emitter: Emitter
     private let frameSourceDeserializer: FrameworksFrameSourceDeserializer
     private let frameSourceListener: FrameworksFrameSourceListener
@@ -91,7 +91,13 @@ open class CoreModule: NSObject, FrameworkModule {
 
     public static func create(emitter: Emitter) -> CoreModule {
         let frameSourceListener = FrameworksFrameSourceListener(eventEmitter: emitter)
-        let frameSourceHandler = DefaultFrameSourceHandler(frameSourceListener: frameSourceListener)
+        let torchStateListener = FrameworksTorchListener(eventEmitter: emitter)
+        let macroModeListener = FrameworksMacroModeListener(eventEmitter: emitter)
+        let frameSourceHandler = DefaultFrameSourceHandler(
+            frameSourceListener: frameSourceListener,
+            torchStateListener: torchStateListener,
+            macroModeListener: macroModeListener
+        )
         let frameSourceDeserializer = FrameworksFrameSourceDeserializer(frameSourceHandler: frameSourceHandler)
 
         return CoreModule(
@@ -103,21 +109,25 @@ open class CoreModule: NSObject, FrameworkModule {
         )
     }
 
-    public let defaults: DefaultsEncodable = CoreDefaults.shared
+    public override func getDefaults() -> [String: Any?] {
+        CoreDefaults.shared.toEncodable()
+    }
 
-    public func createContextFromJSON(_ json: String, result: FrameworksResult) {
+    public func createContextFromJson(contextJson: String, result: FrameworksResult) {
         do {
             self.contextLock.wait()
             defer { self.contextLock.signal() }
 
             let _ = try captureContext.initialize(
-                json: json,
+                json: contextJson,
                 frameSourceListener: frameSourceListener,
                 frameSourceDeserializerListener: frameSourceDeserializer,
                 dataCaptureContextListener: dataCaptureContextListener
             )
 
-            LastFrameData.shared.configure(configuration: FramesHandlingConfiguration.create(contextCreationJson: json))
+            LastFrameData.shared.configure(
+                configuration: FramesHandlingConfiguration.create(contextCreationJson: contextJson)
+            )
 
             result.success()
         } catch {
@@ -127,14 +137,16 @@ open class CoreModule: NSObject, FrameworkModule {
         }
     }
 
-    public func updateContextFromJSON(_ json: String, result: FrameworksResult) {
+    public func updateContextFromJson(contextJson: String, result: FrameworksResult) {
         do {
             self.contextLock.wait()
             defer { self.contextLock.signal() }
 
-            try captureContext.update(json: json)
+            try captureContext.update(json: contextJson)
 
-            LastFrameData.shared.configure(configuration: FramesHandlingConfiguration.create(contextCreationJson: json))
+            LastFrameData.shared.configure(
+                configuration: FramesHandlingConfiguration.create(contextCreationJson: contextJson)
+            )
 
             result.success(result: nil)
         } catch {
@@ -162,9 +174,9 @@ open class CoreModule: NSObject, FrameworkModule {
         return false
     }
 
-    public func emitFeedback(json: String, result: FrameworksResult) {
+    public func emitFeedback(feedbackJson: String, result: FrameworksResult) {
         do {
-            let feedback = try Feedback(fromJSONString: json)
+            let feedback = try Feedback(fromJSONString: feedbackJson)
             feedback.emit()
 
             dispatchMain {
@@ -177,7 +189,7 @@ open class CoreModule: NSObject, FrameworkModule {
         }
     }
 
-    public func viewPointForFramePoint(viewId: Int, json: String, result: FrameworksResult) {
+    public func viewPointForFramePoint(viewId: Int, pointJson: String, result: FrameworksResult) {
         let block = { [weak self] in
             guard self != nil else {
                 Log.error("Self was nil while trying to create the context.")
@@ -189,13 +201,14 @@ open class CoreModule: NSObject, FrameworkModule {
                 return
             }
 
-            let viewPoint = frameworksDataCaptureView.mapFramePointToView(jsonString: json)
+            let viewPoint = frameworksDataCaptureView.mapFramePointToView(jsonString: pointJson)
             result.success(result: viewPoint?.jsonString)
         }
         dispatchMain(block)
     }
 
-    public func viewQuadrilateralForFrameQuadrilateral(viewId: Int, json: String, result: FrameworksResult) {
+    public func viewQuadrilateralForFrameQuadrilateral(viewId: Int, quadrilateralJson: String, result: FrameworksResult)
+    {
         let block = { [weak self] in
             guard self != nil else {
                 Log.error("Self was nil while trying to create the context.")
@@ -206,7 +219,7 @@ open class CoreModule: NSObject, FrameworkModule {
                 result.reject(error: ScanditFrameworksCoreError.nilDataCaptureView)
                 return
             }
-            let viewQuad = frameworksDataCaptureView.mapFrameQuadrilateralToView(jsonString: json)
+            let viewQuad = frameworksDataCaptureView.mapFrameQuadrilateralToView(jsonString: quadrilateralJson)
             result.success(result: viewQuad?.jsonString)
         }
         dispatchMain(block)
@@ -241,7 +254,11 @@ open class CoreModule: NSObject, FrameworkModule {
         result.success(result: isTorchAvailable)
     }
 
-    public func disposeContext() {
+    public func isMacroModeAvailable(result: FrameworksResult) {
+        result.success(result: Camera.isMacroModeAvailable)
+    }
+
+    public func disposeContext(result: FrameworksResult) {
         self.contextLock.wait()
         defer { self.contextLock.signal() }
 
@@ -250,36 +267,42 @@ open class CoreModule: NSObject, FrameworkModule {
         frameSourceHandler.releaseCamera()
         LastFrameData.shared.release()
         DeserializationLifeCycleDispatcher.shared.dispatchDataCaptureContextDisposed()
+        result.success()
     }
 
-    public func didStart() {
+    public override func didStart() {
         DeserializationLifeCycleDispatcher.shared.attach(observer: self)
     }
 
-    public func didStop() {
+    public override func didStop() {
         DeserializationLifeCycleDispatcher.shared.detach(observer: self)
         Deserializers.Factory.clearDeserializers()
-        disposeContext()
+        super.didStop()
+        disposeContext(result: NoopFrameworksResult())
     }
 
-    public func registerDataCaptureContextListener() {
+    public func subscribeContextListener(result: FrameworksResult) {
         dataCaptureContextListener.enable()
+        result.success()
     }
 
-    public func unregisterDataCaptureContextListener() {
+    public func unsubscribeContextListener(result: FrameworksResult) {
         dataCaptureContextListener.disable()
+        result.success()
     }
 
-    public func registerDataCaptureViewListener(viewId: Int) {
+    public func registerListenerForViewEvents(viewId: Int, result: FrameworksResult) {
         if let frameworksView = DataCaptureViewHandler.shared.getView(viewId) {
             frameworksView.registerDataCaptureViewListener()
         }
+        result.success()
     }
 
-    public func unregisterDataCaptureViewListener(viewId: Int) {
+    public func unregisterListenerForViewEvents(viewId: Int, result: FrameworksResult) {
         if let frameworksView = DataCaptureViewHandler.shared.getView(viewId) {
             frameworksView.unregisterDataCaptureViewListener()
         }
+        result.success()
     }
 
     public func unregisterTopmostDataCaptureViewListener() {
@@ -288,12 +311,109 @@ open class CoreModule: NSObject, FrameworkModule {
         }
     }
 
-    public func registerFrameSourceListener() {
-        frameSourceListener.enable()
+    public func registerFocusGestureListener(viewId: Int, result: FrameworksResult) {
+        guard let viewInstance = DataCaptureViewHandler.shared.getView(viewId) else {
+            addPostSpecificViewCreationAction(viewId: viewId) { [weak self] in
+                self?.registerFocusGestureListener(viewId: viewId, result: result)
+            }
+            return
+        }
+        let focusGestureListener = FrameworksFocusGestureListener(eventEmitter: emitter, viewId: viewId)
+        viewInstance.registerFocusGestureListener(focusGestureListener)
+        result.successAndKeepCallback(result: nil)
     }
 
-    public func unregisterFrameSourceListener() {
+    public func unregisterFocusGestureListener(viewId: Int, result: FrameworksResult) {
+        guard let viewInstance = DataCaptureViewHandler.shared.getView(viewId) else {
+            result.success()
+            return
+        }
+        viewInstance.unregisterFocusGestureListener()
+        result.success(result: nil)
+    }
+
+    public func registerZoomGestureListener(viewId: Int, result: FrameworksResult) {
+        guard let viewInstance = DataCaptureViewHandler.shared.getView(viewId) else {
+            addPostSpecificViewCreationAction(viewId: viewId) { [weak self] in
+                self?.registerZoomGestureListener(viewId: viewId, result: result)
+            }
+            return
+        }
+        let zoomGestureListener = FrameworksZoomGestureListener(eventEmitter: emitter, viewId: viewId)
+        viewInstance.registerZoomGestureListener(zoomGestureListener)
+        result.successAndKeepCallback(result: nil)
+    }
+
+    public func unregisterZoomGestureListener(viewId: Int, result: FrameworksResult) {
+        guard let viewInstance = DataCaptureViewHandler.shared.getView(viewId) else {
+            result.success()
+            return
+        }
+        viewInstance.unregisterZoomGestureListener()
+        result.success(result: nil)
+    }
+
+    public func triggerFocus(viewId: Int, pointJson: String, result: FrameworksResult) {
+        guard let viewInstance = DataCaptureViewHandler.shared.getView(viewId) else {
+            addPostSpecificViewCreationAction(viewId: viewId) { [weak self] in
+                self?.triggerFocus(viewId: viewId, pointJson: pointJson, result: result)
+            }
+            return
+        }
+        viewInstance.triggerFocus(pointJson: pointJson)
+        result.success(result: nil)
+    }
+
+    public func triggerZoomIn(viewId: Int, result: FrameworksResult) {
+        guard let viewInstance = DataCaptureViewHandler.shared.getView(viewId) else {
+            addPostSpecificViewCreationAction(viewId: viewId) { [weak self] in
+                self?.triggerZoomIn(viewId: viewId, result: result)
+            }
+            return
+        }
+        viewInstance.triggerZoomIn()
+        result.success(result: nil)
+    }
+
+    public func triggerZoomOut(viewId: Int, result: FrameworksResult) {
+        guard let viewInstance = DataCaptureViewHandler.shared.getView(viewId) else {
+            addPostSpecificViewCreationAction(viewId: viewId) { [weak self] in
+                self?.triggerZoomOut(viewId: viewId, result: result)
+            }
+            return
+        }
+        viewInstance.triggerZoomOut()
+        result.success(result: nil)
+    }
+
+    public func registerFrameSourceListener(result: FrameworksResult) {
+        frameSourceListener.enable()
+        result.successAndKeepCallback(result: nil)
+    }
+
+    public func unregisterFrameSourceListener(result: FrameworksResult) {
         frameSourceListener.disable()
+        result.success(result: nil)
+    }
+
+    public func registerTorchStateListener(result: FrameworksResult) {
+        frameSourceHandler.addTorchStateListener()
+        result.successAndKeepCallback(result: nil)
+    }
+
+    public func unregisterTorchStateListener(result: FrameworksResult) {
+        frameSourceHandler.removeTorchStateListener()
+        result.success(result: nil)
+    }
+
+    public func registerMacroModeListener(result: FrameworksResult) {
+        frameSourceHandler.addMacroModeListener()
+        result.successAndKeepCallback(result: nil)
+    }
+
+    public func unregisterMacroModeListener(result: FrameworksResult) {
+        frameSourceHandler.removeMacroModeListener()
+        result.success(result: nil)
     }
 
     public func switchCameraToDesiredState(stateJson: String, result: FrameworksResult) {
@@ -368,11 +488,17 @@ open class CoreModule: NSObject, FrameworkModule {
                 DeserializationLifeCycleDispatcher.shared.dispatchDataCaptureViewDeserialized(view: frameworksView.view)
 
                 // Handle overlays
-                for overlay in creationData.overlaysJson {
+                for entry in creationData.overlays {
+                    frameworksView.setPendingOverlayKey(entry.key)
                     try DeserializationLifeCycleDispatcher.shared.dispatchAddOverlayToView(
                         view: frameworksView,
-                        overlayJson: overlay
+                        overlayJson: entry.jsonString
                     )
+                }
+
+                // Execute post view creation actions
+                for action in self.getPostSpecificViewCreationActions(viewId: frameworksView.viewId) {
+                    action()
                 }
 
                 result.success(result: nil)
@@ -395,6 +521,10 @@ open class CoreModule: NSObject, FrameworkModule {
             let updateData = DataCaptureViewCreationData.fromJson(viewJson)
 
             guard let frameworksView = DataCaptureViewHandler.shared.getView(updateData.viewId) else {
+                Log.info(
+                    "updateDataCaptureView: no view found for viewId \(updateData.viewId). "
+                        + "The view may not have been created yet or was already disposed."
+                )
                 result.success()
                 return
             }
@@ -402,13 +532,22 @@ open class CoreModule: NSObject, FrameworkModule {
 
                 try frameworksView.updateView(updateData: updateData)
 
-                // Handle overlays
-                frameworksView.removeAllOverlays()
+                // Diff overlays: only add/remove what changed
+                let incomingKeys = Set(updateData.overlays.map(\.key))
+                let existingKeys = frameworksView.overlayKeys
 
-                for overlay in updateData.overlaysJson {
+                for key in existingKeys.subtracting(incomingKeys) {
+                    frameworksView.removeOverlayByKey(key)
+                }
+
+                let keysToAdd = incomingKeys.subtracting(existingKeys)
+                for entry in updateData.overlays where keysToAdd.contains(entry.key) {
+                    // Remove any existing overlay of the same type but different modeId
+                    frameworksView.removeExistingOverlaysOfType(entry.type, excludingKey: entry.key)
+                    frameworksView.setPendingOverlayKey(entry.key)
                     try DeserializationLifeCycleDispatcher.shared.dispatchAddOverlayToView(
                         view: frameworksView,
-                        overlayJson: overlay
+                        overlayJson: entry.jsonString
                     )
                 }
                 result.success()
@@ -440,6 +579,7 @@ open class CoreModule: NSObject, FrameworkModule {
     }
 
     public func dataCaptureViewDisposed(_ dataCaptureView: DataCaptureView) {
+        clearPostSpecificViewCreationActions(viewId: dataCaptureView.tag)
         dispatchMain {
             DataCaptureViewHandler.shared.removeView(dataCaptureView.tag)
         }
@@ -470,13 +610,46 @@ open class CoreModule: NSObject, FrameworkModule {
             result.success(result: $0)
         }
     }
+
+    public func getLastFrameOrNullAsJson(frameId: String, result: FrameworksResult) {
+        LastFrameData.shared.getLastFrameDataJSON(frameId: frameId) {
+            result.success(result: $0)
+        }
+    }
+
+    public func getLastFrameOrNullAsMap(frameId: String, result: FrameworksResult) {
+        LastFrameData.shared.getLastFrameDataBytes(frameId: frameId) {
+            result.success(result: $0)
+        }
+    }
+
+    public override func createCommand(_ method: any FrameworksMethodCall) -> (any BaseCommand)? {
+        CoreModuleCommandFactory.create(module: self, method)
+    }
+
+    /// Single dispatcher for all Core commands.
+    /// Creates command from method call and executes it.
+    /// - Parameter method: The method call containing method name and parameters
+    /// - Parameter result: The result handler for async responses
+    /// - Returns: true if the method was handled, false if unknown
+    public func execute(
+        _ method: FrameworksMethodCall,
+        result: FrameworksResult,
+        module: FrameworkModule
+    ) -> Bool {
+        guard let command = module.createCommand(method) else {
+            return false
+        }
+        command.execute(result: result)
+        return true
+    }
 }
 
 extension CoreModule: DeserializationLifeCycleObserver {
     public func dataCaptureView(removed view: DataCaptureView) {
+        clearPostSpecificViewCreationActions(viewId: view.tag)
         dispatchMain {
             DataCaptureViewHandler.shared.removeView(view.tag)
-            // dispatch that the view has been removed
             DeserializationLifeCycleDispatcher.shared.dispatchDataCaptureViewDeserialized(view: nil)
         }
     }

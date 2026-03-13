@@ -23,6 +23,7 @@ struct DataCaptureViewDefaults: DefaultsEncodable {
             "focusGesture": view.focusGesture?.jsonString,
             "zoomGesture": view.zoomGesture?.jsonString,
             "logoStyle": view.logoStyle.jsonString,
+            "shouldShowZoomNotification": view.shouldShowZoomNotification,
         ]
     }
 }

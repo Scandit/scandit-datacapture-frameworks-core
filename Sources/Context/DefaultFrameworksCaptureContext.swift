@@ -63,7 +63,7 @@ public final class DefaultFrameworksCaptureContext {
     }
 
     func update(json: String) throws {
-        guard initialized else { fatalError("DataCaptureContextNotInitialized") }
+        guard initialized else { throw ScanditFrameworksCoreError.nilDataCaptureContext }
 
         let data = try DataCaptureContextData.from(jsonString: json)
 
@@ -94,7 +94,10 @@ public final class DefaultFrameworksCaptureContext {
     }
 
     public func addMode(mode: DataCaptureMode) {
-        guard initialized else { fatalError("DataCaptureContextNotInitialized") }
+        guard initialized else {
+            Log.error("Unable to add the required mode. DataCaptureContext is not initialized.")
+            return
+        }
         context?.addMode(mode)
     }
 

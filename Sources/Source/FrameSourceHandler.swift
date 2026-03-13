@@ -20,4 +20,12 @@ public protocol FrameSourceHandler {
     var currentCameraDesiredState: FrameSourceState? { get }
 
     func releaseCamera()
+
+    func addTorchStateListener()
+
+    func removeTorchStateListener()
+
+    func addMacroModeListener()
+
+    func removeMacroModeListener()
 }

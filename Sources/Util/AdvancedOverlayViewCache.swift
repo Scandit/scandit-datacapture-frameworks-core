@@ -7,6 +7,8 @@
 import UIKit
 
 public protocol AdvancedOverlayViewCache {
+    func addToCache(viewIdentifier: String, view: UIView)
+    func getView(viewIdentifier: String) -> UIView?
     func getOrCreateView(fromImage image: UIImage, withIdentifier viewIdentifier: String) -> UIImageView?
     func getOrCreateView(fromBase64EncodedData data: Data, withIdentifier viewIdentifier: String) -> UIImageView?
     func removeView(withIdentifier viewIdentifier: String)

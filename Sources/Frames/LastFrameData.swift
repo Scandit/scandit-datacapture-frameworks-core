@@ -144,6 +144,7 @@ public final class LastFrameData {
         [
             "imageBuffers": data.imageBuffers.compactMap { getEncodableImageBuffer(frameId: frameId, buffer: $0) },
             "orientation": 90,
+            "timestamp": -1,
         ]
     }
 
