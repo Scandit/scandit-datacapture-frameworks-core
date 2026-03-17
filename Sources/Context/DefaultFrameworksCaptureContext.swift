@@ -5,7 +5,6 @@
  */
 
 import Foundation
-import ScanditCaptureCore
 
 public final class DefaultFrameworksCaptureContext {
     private init() {}
@@ -15,7 +14,7 @@ public final class DefaultFrameworksCaptureContext {
     private var deserializers: Deserializers?
 
     public var context: DataCaptureContext? {
-        initialized ? DataCaptureContext.shared : nil
+        return initialized ? DataCaptureContext.shared : nil
     }
 
     func initialize(
@@ -23,7 +22,7 @@ public final class DefaultFrameworksCaptureContext {
         frameSourceListener: FrameSourceListener,
         frameSourceDeserializerListener: FrameworksFrameSourceDeserializer,
         dataCaptureContextListener: DataCaptureContextListener
-    ) throws -> DataCaptureContext {
+    ) throws -> DataCaptureContext  {
         contextLock.lock()
         defer { contextLock.unlock() }
 
@@ -51,8 +50,7 @@ public final class DefaultFrameworksCaptureContext {
 
         // Proceed with FrameSource
         if let frameSourceJson = data.frameSource {
-            if let frameSource = try deserializers?.frameSourceDeserializer.frameSource(fromJSONString: frameSourceJson)
-            {
+            if let frameSource = try deserializers?.frameSourceDeserializer.frameSource(fromJSONString: frameSourceJson) {
                 dcContext.setFrameSource(frameSource)
             }
         }
@@ -77,8 +75,7 @@ public final class DefaultFrameworksCaptureContext {
         }
 
         if let frameSourceJson = data.frameSource {
-            if let frameSource = try deserializers?.frameSourceDeserializer.frameSource(fromJSONString: frameSourceJson)
-            {
+            if let frameSource = try deserializers?.frameSourceDeserializer.frameSource(fromJSONString: frameSourceJson) {
                 context?.setFrameSource(frameSource)
             }
         }
@@ -111,3 +108,4 @@ public final class DefaultFrameworksCaptureContext {
 
     public static let shared = DefaultFrameworksCaptureContext()
 }
+

@@ -6,78 +6,58 @@
 
 import Foundation
 
-public struct OverlayEntry {
-    /// Identity key in the form `type:modeId`, used for diffing overlays.
-    public let key: String
-    /// The overlay type extracted from `key` (the part before `:`).
-    public let type: String
-    /// The raw JSON string passed to the deserialization dispatcher.
-    public let jsonString: String
-
-    static func from(overlayDict: [String: Any]) -> OverlayEntry? {
-        guard let type = overlayDict["type"] as? String,
-            let data = try? JSONSerialization.data(withJSONObject: overlayDict),
-            let jsonString = String(data: data, encoding: .utf8)
-        else {
-            return nil
-        }
-        let modeId = overlayDict["modeId"] as? Int ?? -1
-        return OverlayEntry(key: "\(type):\(modeId)", type: type, jsonString: jsonString)
-    }
-}
-
 public class DataCaptureViewCreationData {
     let viewId: Int
     let parentId: Int?
     let viewJson: String
-    let overlays: [OverlayEntry]
+    let overlaysJson: [String]
 
     private init(
         viewId: Int,
         parentId: Int?,
         viewJson: String,
-        overlays: [OverlayEntry]
+        overlaysJson: [String]
     ) {
         self.viewId = viewId
         self.parentId = parentId
         self.viewJson = viewJson
-        self.overlays = overlays
+        self.overlaysJson = overlaysJson
     }
 
     static func fromJson(_ jsonString: String) -> DataCaptureViewCreationData {
         guard let jsonData = jsonString.data(using: .utf8),
-            var json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
-        else {
+              var json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
             // Return default values if JSON parsing fails
             return DataCaptureViewCreationData(
                 viewId: 0,
                 parentId: nil,
                 viewJson: "{}",
-                overlays: []
+                overlaysJson: []
             )
         }
 
         let overlays = getOverlaysFromViewJson(&json)
 
         return DataCaptureViewCreationData(
-            viewId: json[Constants.viewIdKey] as? Int ?? 0,
-            parentId: json[Constants.parentIdKey] as? Int,
+            viewId: json[Constants.VIEW_ID_KEY] as? Int ?? 0,
+            parentId: json[Constants.PARENT_ID_KEY] as? Int,
             viewJson: convertToJsonString(json) ?? "{}",
-            overlays: overlays
+            overlaysJson: overlays
         )
     }
 
-    private static func getOverlaysFromViewJson(_ json: inout [String: Any]) -> [OverlayEntry] {
-        var overlays: [OverlayEntry] = []
+    private static func getOverlaysFromViewJson(_ json: inout [String: Any]) -> [String] {
+        var overlays = [String]()
 
-        if let overlayDicts = json[Constants.overlaysKey] as? [[String: Any]] {
-            for dict in overlayDicts {
-                if let entry = OverlayEntry.from(overlayDict: dict) {
-                    overlays.append(entry)
+        if let overlaysJson = json[Constants.OVERLAYS_KEY] as? [[String: Any]] {
+            for overlay in overlaysJson {
+                if let overlayData = try? JSONSerialization.data(withJSONObject: overlay, options: []),
+                   let overlayString = String(data: overlayData, encoding: .utf8) {
+                    overlays.append(overlayString)
                 }
             }
         }
-        json.removeValue(forKey: Constants.overlaysKey)
+        json.removeValue(forKey: Constants.OVERLAYS_KEY)
         return overlays
     }
 
@@ -89,8 +69,8 @@ public class DataCaptureViewCreationData {
     }
 
     private struct Constants {
-        static let viewIdKey = "viewId"
-        static let parentIdKey = "parentId"
-        static let overlaysKey = "overlays"
+        static let VIEW_ID_KEY = "viewId"
+        static let PARENT_ID_KEY = "parentId"
+        static let OVERLAYS_KEY = "overlays"
     }
 }
