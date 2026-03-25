@@ -27,7 +27,7 @@ struct EncodableRectangularViewfinder: DefaultsEncodable {
         self.disabledDimming = disabledDimming
         self.disabledColor = disabledColor
     }
-    
+
     private let size: String
     private let color: UIColor
     private let style: String
@@ -50,14 +50,14 @@ struct EncodableRectangularViewfinder: DefaultsEncodable {
 
     func toEncodable() -> [String: Any?] {
         [
-            "size":             size,
-            "color":            color.sdcHexString,
-            "style":            style,
-            "lineStyle":        lineStyle,
-            "dimming":          dimming,
-            "animation":        animation?.jsonString,
-            "disabledDimming":  disabledDimming,
-            "disabledColor":    disabledColor.sdcHexString
+            "size": size,
+            "color": color.sdcHexString,
+            "style": style,
+            "lineStyle": lineStyle,
+            "dimming": dimming,
+            "animation": animation?.jsonString,
+            "disabledDimming": disabledDimming,
+            "disabledColor": disabledColor.sdcHexString,
         ]
     }
 }

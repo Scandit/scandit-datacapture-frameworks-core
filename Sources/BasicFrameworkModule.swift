@@ -48,11 +48,11 @@ open class BasicFrameworkModule<T>: NSObject, FrameworkModule {
         return Array(modesCache.values)
     }
 
-     public func getModeFromCacheByParent(_ parentId: Int) -> FrameworksBaseMode? {
-         objc_sync_enter(self)
-         defer { objc_sync_exit(self) }
-         
-         return getAllModesInCache().compactMap{ $0 as? FrameworksBaseMode }.first { mode in
+    public func getModeFromCacheByParent(_ parentId: Int) -> FrameworksBaseMode? {
+        objc_sync_enter(self)
+        defer { objc_sync_exit(self) }
+
+        return getAllModesInCache().compactMap { $0 as? FrameworksBaseMode }.first { mode in
             mode.parentId == parentId
         }
     }

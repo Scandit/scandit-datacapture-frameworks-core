@@ -8,8 +8,11 @@ import Foundation
 
 public class ConcurrentDictionary<Key: Hashable, Value> {
     private var dictionary: [Key: Value] = [:]
-    private let queue = DispatchQueue(label: "com.scandit.frameworks.ConcurrentDictionaryQueue", attributes: .concurrent)
-    
+    private let queue = DispatchQueue(
+        label: "com.scandit.frameworks.ConcurrentDictionaryQueue",
+        attributes: .concurrent
+    )
+
     public init() {}
 
     public func setValue(_ value: Value, for key: Key) {
@@ -41,7 +44,7 @@ public class ConcurrentDictionary<Key: Hashable, Value> {
         }
         return currentDictionary
     }
-    
+
     public func removeAllValues() {
         queue.async(flags: .barrier) {
             self.dictionary.removeAll()

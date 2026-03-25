@@ -9,9 +9,9 @@ import Foundation
 public class FrameworksViewsCache<T: FrameworksBaseView> {
     private var views: ConcurrentDictionary<Int, T> = ConcurrentDictionary()
     private var createdViews: [Int] = []
-    
+
     public init() {
-        
+
     }
 
     public func addView(view: T) {
@@ -20,7 +20,7 @@ public class FrameworksViewsCache<T: FrameworksBaseView> {
     }
 
     public func getView(viewId: Int) -> T? {
-        return views.getValue(for: viewId)
+        views.getValue(for: viewId)
     }
 
     public func getTopMost() -> T? {
@@ -36,7 +36,7 @@ public class FrameworksViewsCache<T: FrameworksBaseView> {
         }
         return views.removeValue(for: viewId)
     }
-    
+
     public func disposeAll() {
         views.getAllValues().forEach {
             $0.value.dispose()
