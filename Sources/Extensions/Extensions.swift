@@ -5,6 +5,7 @@
  */
 
 import Foundation
+import ScanditCaptureCore
 
 public extension Dictionary {
     func encodeToJSONString() -> String? {
@@ -29,5 +30,18 @@ public extension Dictionary where Key == String, Value == Any {
 
     var dataCaptureViewId: Int {
         self["dataCaptureViewId"] as? Int ?? 0
+    }
+}
+
+public extension MacroMode {
+    var jsonString: String {
+        switch self {
+        case .auto:
+            return "auto"
+        case .off:
+            return "off"
+        case .on:
+            return "on"
+        }
     }
 }

@@ -7,14 +7,21 @@
 import UIKit
 
 public class DefaultAdvancedOverlayViewCache: AdvancedOverlayViewCache {
-    private var views: [String: UIImageView] = [:]
-    private let lock = NSLock()
+    private var views: ConcurrentDictionary<String, UIView> = ConcurrentDictionary()
 
     public init() {}
 
+    public func addToCache(viewIdentifier: String, view: UIView) {
+        self.views.setValue(view, for: viewIdentifier)
+    }
+
+    public func getView(viewIdentifier: String) -> UIView? {
+        views.getValue(for: viewIdentifier)
+    }
+
     public func getOrCreateView(fromImage image: UIImage, withIdentifier viewIdentifier: String) -> UIImageView? {
         var imageView: UIImageView
-        if let existingView = self.views[viewIdentifier] {
+        if let existingView = views.getValue(for: viewIdentifier) as? UIImageView {
             imageView = existingView
             imageView.image = image
         } else {
@@ -30,15 +37,11 @@ public class DefaultAdvancedOverlayViewCache: AdvancedOverlayViewCache {
     }
 
     public func removeView(withIdentifier viewIdentifier: String) {
-        dispatchMain {
-            self.views.removeValue(forKey: viewIdentifier)
-        }
+        _ = views.removeValue(for: viewIdentifier)
     }
 
     public func clear() {
-        dispatchMain {
-            self.views.removeAll()
-        }
+        views.removeAllValues()
     }
 
     private func createImageView(with image: UIImage, viewIdentifier: String) -> UIImageView {
@@ -48,7 +51,7 @@ public class DefaultAdvancedOverlayViewCache: AdvancedOverlayViewCache {
             width: imageView.frame.size.width / scale,
             height: imageView.frame.size.height / scale
         )
-        self.views[viewIdentifier] = imageView
+        views.setValue(imageView, for: viewIdentifier)
         return imageView
     }
 

@@ -8,15 +8,15 @@ import ScanditCaptureCore
 
 public class DefaultFrameSourceHandler: FrameSourceHandler {
     private let frameSourceListener: FrameworksFrameSourceListener
+    private let torchStateListener: FrameworksTorchListener
+    private let macroModeListener: FrameworksMacroModeListener
 
     private var camera: Camera? {
         willSet {
             camera?.removeListener(frameSourceListener)
-            camera?.removeTorchListener(frameSourceListener)
         }
         didSet {
             camera?.addListener(frameSourceListener)
-            camera?.addTorchListener(frameSourceListener)
         }
     }
 
@@ -37,8 +37,14 @@ public class DefaultFrameSourceHandler: FrameSourceHandler {
         camera?.currentState
     }
 
-    public init(frameSourceListener: FrameworksFrameSourceListener) {
+    public init(
+        frameSourceListener: FrameworksFrameSourceListener,
+        torchStateListener: FrameworksTorchListener,
+        macroModeListener: FrameworksMacroModeListener
+    ) {
         self.frameSourceListener = frameSourceListener
+        self.torchStateListener = torchStateListener
+        self.macroModeListener = macroModeListener
     }
 
     public func onNewFrameSourceDeserialized(frameSource: FrameSource, json: JSONValue) {
@@ -46,34 +52,57 @@ public class DefaultFrameSourceHandler: FrameSourceHandler {
             self.camera = camera
             self.imageFrameSource = nil
 
-            if json.containsKey(DefaultFrameSourceHandler.desiredTorchStateKey) {
-                var torchState: TorchState = .off
-                SDCTorchStateFromJSONString(
-                    json.string(forKey: DefaultFrameSourceHandler.desiredTorchStateKey),
-                    &torchState
-                )
-                camera.desiredTorchState = torchState
-            }
-            if json.containsKey(DefaultFrameSourceHandler.desiredStateKey) {
-                var frameState: FrameSourceState = .off
-                SDCFrameSourceStateFromJSONString(
-                    json.string(forKey: DefaultFrameSourceHandler.desiredStateKey),
-                    &frameState
-                )
-                camera.switch(toDesiredState: frameState)
-            }
+            applyTorchStateFromJson(camera: camera, json: json)
+            applyDesiredStateFromJson(frameSource: camera, json: json)
+            checkAndSetTorchStateListener(camera: camera, json: json)
+            checkAndSetMacroModeListener(camera: camera, json: json)
         } else if let imageFrameSource = frameSource as? ImageFrameSource {
             self.imageFrameSource = imageFrameSource
             self.camera = nil
 
-            if json.containsKey(DefaultFrameSourceHandler.desiredStateKey) {
-                var frameState: FrameSourceState = .off
-                SDCFrameSourceStateFromJSONString(
-                    json.string(forKey: DefaultFrameSourceHandler.desiredStateKey),
-                    &frameState
-                )
-                imageFrameSource.switch(toDesiredState: frameState)
+            applyDesiredStateFromJson(frameSource: imageFrameSource, json: json)
+        }
+    }
+
+    private func applyTorchStateFromJson(camera: Camera, json: JSONValue) {
+        if json.containsKey(DefaultFrameSourceHandler.desiredTorchStateKey) {
+            var torchState: TorchState = .off
+            SDCTorchStateFromJSONString(
+                json.string(forKey: DefaultFrameSourceHandler.desiredTorchStateKey),
+                &torchState
+            )
+            camera.desiredTorchState = torchState
+        }
+    }
+
+    private func checkAndSetTorchStateListener(camera: Camera, json: JSONValue) {
+        if json.containsKey(DefaultFrameSourceHandler.hasTorchStateListenersKey) {
+            if json.bool(forKey: DefaultFrameSourceHandler.hasTorchStateListenersKey) {
+                camera.addTorchListener(torchStateListener)
+            } else {
+                camera.removeTorchListener(torchStateListener)
             }
+        }
+    }
+
+    private func checkAndSetMacroModeListener(camera: Camera, json: JSONValue) {
+        if json.containsKey(DefaultFrameSourceHandler.hasMacroModeListenersKey) {
+            if json.bool(forKey: DefaultFrameSourceHandler.hasMacroModeListenersKey) {
+                camera.addMacroModeListener(macroModeListener)
+            } else {
+                camera.removeMacroModeListener(macroModeListener)
+            }
+        }
+    }
+
+    private func applyDesiredStateFromJson(frameSource: FrameSource, json: JSONValue) {
+        if json.containsKey(DefaultFrameSourceHandler.desiredStateKey) {
+            var frameState: FrameSourceState = .off
+            SDCFrameSourceStateFromJSONString(
+                json.string(forKey: DefaultFrameSourceHandler.desiredStateKey),
+                &frameState
+            )
+            frameSource.switch(toDesiredState: frameState)
         }
     }
 
@@ -115,8 +144,26 @@ public class DefaultFrameSourceHandler: FrameSourceHandler {
         imageFrameSource = nil
     }
 
+    public func addTorchStateListener() {
+        camera?.addTorchListener(torchStateListener)
+    }
+
+    public func removeTorchStateListener() {
+        camera?.removeTorchListener(torchStateListener)
+    }
+
+    public func addMacroModeListener() {
+        camera?.addMacroModeListener(macroModeListener)
+    }
+
+    public func removeMacroModeListener() {
+        camera?.removeMacroModeListener(macroModeListener)
+    }
+
     // MARK: - Private Constants
 
     private static let desiredTorchStateKey = "desiredTorchState"
     private static let desiredStateKey = "desiredState"
+    private static let hasTorchStateListenersKey = "hasTorchStateListeners"
+    private static let hasMacroModeListenersKey = "hasMacroModeListeners"
 }

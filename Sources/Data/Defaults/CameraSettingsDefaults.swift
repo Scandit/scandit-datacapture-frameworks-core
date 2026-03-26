@@ -22,6 +22,9 @@ public struct CameraSettingsDefaults: DefaultsEncodable {
             "focusGestureStrategy": cameraSettings.focusGestureStrategy.jsonString,
             "zoomGestureZoomFactor": cameraSettings.zoomGestureZoomFactor,
             "shouldPreferSmoothAutoFocus": cameraSettings.shouldPreferSmoothAutoFocus,
+            "torchLevel": cameraSettings.torchLevel,
+            "macroMode": cameraSettings.macroMode.jsonString,
+            "adaptiveExposure": cameraSettings.adaptiveExposure,
             "properties": CameraSettingsPropertiesDefaults(cameraSettings: cameraSettings).toEncodable(),
         ]
     }
