@@ -7,51 +7,48 @@
 import UIKit
 
 public class DefaultAdvancedOverlayViewCache: AdvancedOverlayViewCache {
-    private var views: ConcurrentDictionary<String, UIView> = ConcurrentDictionary()
+    private var views: [String: UIImageView] = [:]
+    private let lock = NSLock()
 
     public init() {}
 
-    public func addToCache(viewIdentifier: String, view: UIView) {
-        self.views.setValue(view, for: viewIdentifier)
-    }
-
-    public func getView(viewIdentifier: String) -> UIView? {
-        views.getValue(for: viewIdentifier)
-    }
-
     public func getOrCreateView(fromImage image: UIImage, withIdentifier viewIdentifier: String) -> UIImageView? {
-        var imageView: UIImageView
-        if let existingView = views.getValue(for: viewIdentifier) as? UIImageView {
-            imageView = existingView
-            imageView.image = image
-        } else {
-            imageView = self.createImageView(with: image, viewIdentifier: viewIdentifier)
+        let block: () -> UIImageView? = {
+            var imageView: UIImageView
+            if self.views.keys.contains(viewIdentifier) {
+                imageView = self.views[viewIdentifier]!
+                imageView.image = image
+            } else {
+                imageView = self.createImageView(with: image, viewIdentifier:  viewIdentifier)
+            }
+            return imageView
         }
-        return imageView
+        return dispatchMainSync(block)
     }
 
-    public func getOrCreateView(fromBase64EncodedData data: Data, withIdentifier viewIdentifier: String) -> UIImageView?
-    {
+    public func getOrCreateView(fromBase64EncodedData data: Data, withIdentifier viewIdentifier: String) -> UIImageView? {
         guard let image = parse(data: data) else { return nil }
         return getOrCreateView(fromImage: image, withIdentifier: viewIdentifier)
     }
 
     public func removeView(withIdentifier viewIdentifier: String) {
-        _ = views.removeValue(for: viewIdentifier)
+        dispatchMain {
+            self.views.removeValue(forKey: viewIdentifier)
+        }
     }
 
     public func clear() {
-        views.removeAllValues()
+        dispatchMain {
+            self.views.removeAll()
+        }
     }
 
     private func createImageView(with image: UIImage, viewIdentifier: String) -> UIImageView {
         let imageView = UIImageView(image: image)
         let scale = UIScreen.main.scale
-        imageView.frame.size = CGSize(
-            width: imageView.frame.size.width / scale,
-            height: imageView.frame.size.height / scale
-        )
-        views.setValue(imageView, for: viewIdentifier)
+        imageView.frame.size = CGSize(width: imageView.frame.size.width / scale,
+                                      height: imageView.frame.size.height / scale)
+        self.views[viewIdentifier] = imageView
         return imageView
     }
 

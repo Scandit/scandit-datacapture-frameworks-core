@@ -9,24 +9,19 @@ import ScanditCaptureCore
 
 extension ScanditCaptureCore.RectangularViewfinderStyle: Swift.CaseIterable {
     public static var allCases: [RectangularViewfinderStyle] {
-        [.rounded, .square]
+        [ .rounded, .square]
     }
 }
 
 struct RectangularViewfinderDefaults: DefaultsEncodable {
     func toEncodable() -> [String: Any?] {
-        let allViewFinders = Dictionary(
-            uniqueKeysWithValues: RectangularViewfinderStyle.allCases.map {
-                (
-                    $0.jsonString,
-                    EncodableRectangularViewfinder(viewfinder: RectangularViewfinder(style: $0)).toEncodable()
-                )
-            }
-        )
+        let allViewFinders = Dictionary(uniqueKeysWithValues: RectangularViewfinderStyle.allCases.map {
+            ($0.jsonString, EncodableRectangularViewfinder(viewfinder: RectangularViewfinder(style: $0)).toEncodable())
+        })
 
         return [
             "defaultStyle": RectangularViewfinderStyle.rounded.jsonString,
-            "styles": allViewFinders,
+            "styles": allViewFinders
         ]
     }
 }
@@ -37,6 +32,7 @@ extension ScanditCaptureCore.CameraPosition: Swift.CaseIterable {
     }
 }
 
+
 struct CoreDefaults: DefaultsEncodable {
     private let cameraDefaults: CameraDefaults
     private let dataCaptureViewDefaults: DataCaptureViewDefaults
@@ -45,14 +41,12 @@ struct CoreDefaults: DefaultsEncodable {
     private let brushDefaults: EncodableBrush
     private let laserlineViewfinderDefaults: LaserlineViewfinderDefaults
 
-    init(
-        cameraDefaults: CameraDefaults,
-        dataCaptureViewDefaults: DataCaptureViewDefaults,
-        rectangularViewfinderDefaults: RectangularViewfinderDefaults,
-        aimerViewfinderDefauls: EncodableAimerViewfinder,
-        brushDefaults: EncodableBrush,
-        laserlineViewfinderDefaults: LaserlineViewfinderDefaults
-    ) {
+    init(cameraDefaults: CameraDefaults,
+         dataCaptureViewDefaults: DataCaptureViewDefaults,
+         rectangularViewfinderDefaults: RectangularViewfinderDefaults,
+         aimerViewfinderDefauls: EncodableAimerViewfinder,
+         brushDefaults: EncodableBrush,
+         laserlineViewfinderDefaults: LaserlineViewfinderDefaults) {
         self.cameraDefaults = cameraDefaults
         self.dataCaptureViewDefaults = dataCaptureViewDefaults
         self.rectangularViewfinderDefaults = rectangularViewfinderDefaults
@@ -75,19 +69,15 @@ struct CoreDefaults: DefaultsEncodable {
     }
 
     static let shared: CoreDefaults = {
-        let cameraDefaults = CameraDefaults(
-            cameraSettingsDefaults: EncodableCameraSettings(cameraSettings: CameraSettings()),
-            defaultPosition: Camera.default?.position,
-            availablePositions: CameraPosition.allCases.compactMap { Camera(position: $0)?.position }
-        )
+        let cameraDefaults = CameraDefaults(cameraSettingsDefaults: EncodableCameraSettings(cameraSettings: CameraSettings()),
+                                            defaultPosition: Camera.default?.position,
+                                            availablePositions: CameraPosition.allCases.compactMap { Camera(position: $0)?.position })
         let rectangularViewfinderDefaults = RectangularViewfinderDefaults()
-        return CoreDefaults(
-            cameraDefaults: cameraDefaults,
-            dataCaptureViewDefaults: DataCaptureViewDefaults(view: DataCaptureView(frame: .zero)),
-            rectangularViewfinderDefaults: rectangularViewfinderDefaults,
-            aimerViewfinderDefauls: EncodableAimerViewfinder(viewfinder: AimerViewfinder()),
-            brushDefaults: EncodableBrush(brush: .transparent),
-            laserlineViewfinderDefaults: LaserlineViewfinderDefaults(viewfinder: LaserlineViewfinder())
-        )
+        return CoreDefaults(cameraDefaults: cameraDefaults,
+                            dataCaptureViewDefaults: DataCaptureViewDefaults(view: DataCaptureView(frame: .zero)),
+                            rectangularViewfinderDefaults: rectangularViewfinderDefaults,
+                            aimerViewfinderDefauls: EncodableAimerViewfinder(viewfinder: AimerViewfinder()),
+                            brushDefaults: EncodableBrush(brush: .transparent),
+                            laserlineViewfinderDefaults: LaserlineViewfinderDefaults(viewfinder: LaserlineViewfinder()))
     }()
 }

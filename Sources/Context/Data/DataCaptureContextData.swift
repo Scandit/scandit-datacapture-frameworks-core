@@ -17,28 +17,13 @@ internal struct DataCaptureContextData {
 
     static func from(jsonString: String) throws -> DataCaptureContextData {
         guard let data = jsonString.data(using: .utf8) else {
-            throw NSError(
-                domain: "DataCaptureContext",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "Invalid JSON string."]
-            )
+            throw NSError(domain: "DataCaptureContext", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid JSON string."])
         }
         let jsonObject = try JSONSerialization.jsonObject(with: data, options: [])
-        guard let jsonDict = jsonObject as? [String: Any] else {
-            throw NSError(
-                domain: "DataCaptureContext",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "Invalid JSON structure."]
-            )
-        }
+        let jsonDict = jsonObject as! [String: Any]
 
-        guard let licenseKey = jsonDict["licenseKey"] as? String else {
-            throw NSError(
-                domain: "DataCaptureContext",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "Missing required licenseKey."]
-            )
-        }
+        
+        let licenseKey = jsonDict["licenseKey"] as! String
         let deviceName = jsonDict["deviceName"] as? String
         let framework = jsonDict["framework"] as? String
         let frameworkVersion = jsonDict["frameworkVersion"] as? String
@@ -60,7 +45,7 @@ internal struct DataCaptureContextData {
 
 extension Dictionary where Key == String, Value == Any {
     func toMap() -> [String: Any] {
-        var map: [String: Any] = [:]
+        var map = [String: Any]()
         for (key, value) in self {
             if let dictValue = value as? [String: Any] {
                 map[key] = dictValue.toMap()
@@ -71,3 +56,4 @@ extension Dictionary where Key == String, Value == Any {
         return map
     }
 }
+

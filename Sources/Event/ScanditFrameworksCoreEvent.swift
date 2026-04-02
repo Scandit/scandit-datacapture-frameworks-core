@@ -10,8 +10,4 @@ public enum ScanditFrameworksCoreEvent: String, CaseIterable {
     case dataCaptureViewSizeChanged = "DataCaptureViewListener.onSizeChanged"
     case frameSourceStateChanged = "FrameSourceListener.onStateChanged"
     case torchStateChanged = "TorchListener.onTorchStateChanged"
-    case macroModeChanged = "MacroModeListener.onMacroModeChanged"
-    case focusGesture = "FocusGestureListener.onFocusGesture"
-    case zoomInGesture = "ZoomGestureListener.onZoomInGesture"
-    case zoomOutGesture = "ZoomGestureListener.onZoomOutGesture"
 }
