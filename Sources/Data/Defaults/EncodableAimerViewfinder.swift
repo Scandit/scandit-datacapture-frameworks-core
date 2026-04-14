@@ -17,7 +17,7 @@ struct EncodableAimerViewfinder: DefaultsEncodable {
     func toEncodable() -> [String: Any?] {
         [
             "frameColor": viewfinder.frameColor.sdcHexString,
-            "dotColor": viewfinder.dotColor.sdcHexString
+            "dotColor": viewfinder.dotColor.sdcHexString,
         ]
     }
 }

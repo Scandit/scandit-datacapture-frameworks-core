@@ -32,7 +32,7 @@ public class EventWithResult<T> {
             guard let self else { return }
             emitter.emit(name: self.event.name, payload: payload)
         }
-        
+
         condition.lock()
         while !isCallbackFinished {
             if !condition.wait(until: timeoutDate) {

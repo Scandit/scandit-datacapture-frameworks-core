@@ -15,7 +15,7 @@ public final class Deserializers {
         private static var modeDeserializers: [DataCaptureModeDeserializer] = []
 
         public static func add(_ modeDeserializer: DataCaptureModeDeserializer) {
-            if let _ = modeDeserializers.firstIndex(where: { $0 === modeDeserializer }) {
+            if modeDeserializers.firstIndex(where: { $0 === modeDeserializer }) != nil {
                 return
             }
             modeDeserializers.append(modeDeserializer)
@@ -32,30 +32,36 @@ public final class Deserializers {
         }
 
         public static func create(frameSourceDeserializerDelegate: FrameSourceDeserializerDelegate) -> Deserializers {
-            return Deserializers(modeDeserializers: modeDeserializers,
-                                 componentDeserializers: [],
-                                 frameSourceDeserializerDelegate: frameSourceDeserializerDelegate)
+            Deserializers(
+                modeDeserializers: modeDeserializers,
+                componentDeserializers: [],
+                frameSourceDeserializerDelegate: frameSourceDeserializerDelegate
+            )
         }
     }
 
     private let modeDeserializers: [DataCaptureModeDeserializer]
     private let componentDeserializers: [DataCaptureComponentDeserializer]
-    private let frameSourceDeserializer: FrameSourceDeserializer
+    let frameSourceDeserializer: FrameSourceDeserializer
     let dataCaptureViewDeserializer: DataCaptureViewDeserializer
     let dataCaptureContextDeserializer: DataCaptureContextDeserializer
 
-    fileprivate init(modeDeserializers: [DataCaptureModeDeserializer],
-                     componentDeserializers: [DataCaptureComponentDeserializer],
-                     frameSourceDeserializerDelegate: FrameSourceDeserializerDelegate) {
+    fileprivate init(
+        modeDeserializers: [DataCaptureModeDeserializer],
+        componentDeserializers: [DataCaptureComponentDeserializer],
+        frameSourceDeserializerDelegate: FrameSourceDeserializerDelegate
+    ) {
         self.modeDeserializers = modeDeserializers
         self.componentDeserializers = componentDeserializers
         frameSourceDeserializer = FrameSourceDeserializer(modeDeserializers: modeDeserializers)
         frameSourceDeserializer.delegate = frameSourceDeserializerDelegate
         dataCaptureViewDeserializer = DataCaptureViewDeserializer(modeDeserializers: modeDeserializers)
-        dataCaptureContextDeserializer = DataCaptureContextDeserializer(frameSourceDeserializer: frameSourceDeserializer,
-                                                                        viewDeserializer: dataCaptureViewDeserializer,
-                                                                        modeDeserializers: modeDeserializers,
-                                                                        componentDeserializers: componentDeserializers)
+        dataCaptureContextDeserializer = DataCaptureContextDeserializer(
+            frameSourceDeserializer: frameSourceDeserializer,
+            viewDeserializer: dataCaptureViewDeserializer,
+            modeDeserializers: modeDeserializers,
+            componentDeserializers: componentDeserializers
+        )
         dataCaptureContextDeserializer.avoidThreadDependencies = true
     }
 }
