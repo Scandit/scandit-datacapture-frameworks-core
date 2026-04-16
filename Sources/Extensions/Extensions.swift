@@ -4,9 +4,6 @@
  * Copyright (C) 2024- Scandit AG. All rights reserved.
  */
 
-import Foundation
-import ScanditCaptureCore
-
 public extension Dictionary {
     func encodeToJSONString() -> String? {
         do {
@@ -19,29 +16,17 @@ public extension Dictionary {
     }
 }
 
-public extension Dictionary where Key == String, Value == Any {
+
+public extension Dictionary where Key == String, Value == Any  {
     var viewId: Int {
-        self["viewId"] as? Int ?? 0
+        return self["viewId"] as! Int
     }
-
+    
     var modeId: Int {
-        self["modeId"] as? Int ?? 0
+        return self["modeId"] as! Int
     }
-
+    
     var dataCaptureViewId: Int {
-        self["dataCaptureViewId"] as? Int ?? 0
-    }
-}
-
-public extension MacroMode {
-    var jsonString: String {
-        switch self {
-        case .auto:
-            return "auto"
-        case .off:
-            return "off"
-        case .on:
-            return "on"
-        }
+        return self["dataCaptureViewId"] as! Int
     }
 }
