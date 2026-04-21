@@ -12,11 +12,9 @@ struct CameraDefaults: DefaultsEncodable {
     private let defaultPosition: CameraPosition?
     private let availablePositions: [CameraPosition]?
 
-    init(
-        cameraSettingsDefaults: EncodableCameraSettings,
-        defaultPosition: CameraPosition?,
-        availablePositions: [CameraPosition]?
-    ) {
+    init(cameraSettingsDefaults: EncodableCameraSettings,
+         defaultPosition: CameraPosition?,
+         availablePositions: [CameraPosition]?) {
         self.cameraSettingsDefaults = cameraSettingsDefaults
         self.defaultPosition = defaultPosition
         self.availablePositions = availablePositions
@@ -26,7 +24,7 @@ struct CameraDefaults: DefaultsEncodable {
         [
             "Settings": cameraSettingsDefaults.toEncodable(),
             "defaultPosition": defaultPosition?.jsonString,
-            "availablePositions": availablePositions?.map { $0.jsonString },
+            "availablePositions": availablePositions?.map { $0.jsonString }
         ]
     }
 }

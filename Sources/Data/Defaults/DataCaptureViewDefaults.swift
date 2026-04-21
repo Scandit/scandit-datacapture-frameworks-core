@@ -22,7 +22,7 @@ struct DataCaptureViewDefaults: DefaultsEncodable {
             "logoOffset": view.logoOffset.jsonString,
             "focusGesture": view.focusGesture?.jsonString,
             "zoomGesture": view.zoomGesture?.jsonString,
-            "logoStyle": view.logoStyle.jsonString,
+            "logoStyle": view.logoStyle.jsonString
         ]
     }
 }
