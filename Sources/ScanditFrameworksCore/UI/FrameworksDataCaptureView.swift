@@ -7,7 +7,6 @@
 import Foundation
 import ScanditCaptureCore
 import ScanditCaptureCoreDeserializer
-
 #if SWIFT_PACKAGE
 private import _ScanditFrameworksCorePrivate
 #endif
