@@ -10,10 +10,11 @@ let package = Package(
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
             name: "ScanditFrameworksCore",
-            targets: ["ScanditFrameworksCore"]),
+            targets: ["ScanditFrameworksCore"]
+        ),
     ],
     dependencies: [
-        .package(url: "https://github.com/Scandit/datacapture-spm.git", exact: "8.4.1"),
+        .package(url: "https://github.com/Scandit/datacapture-spm.git", exact: "8.5.0"),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -23,7 +24,14 @@ let package = Package(
             dependencies: [
                 .product(name: "ScanditCaptureCore", package: "datacapture-spm"),
                 .product(name: "ScanditCaptureCoreDeserializer", package: "datacapture-spm"),
+                "_ScanditFrameworksCorePrivate",
             ],
-            path: "Sources"),
+            path: "Sources/ScanditFrameworksCore"
+        ),
+        .target(
+            name: "_ScanditFrameworksCorePrivate",
+            path: "Sources/ScanditFrameworksCorePrivate",
+            publicHeadersPath: "include"
+        ),
     ]
 )
