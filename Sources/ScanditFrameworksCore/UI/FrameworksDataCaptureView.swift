@@ -99,8 +99,11 @@ public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
     }
 
     public func dispose() {
-        dispatchMain { [weak self] in
-            guard let self else { return }
+        // Strong self capture: callers drop their reference right after
+        // dispose(), and a weak-self block can lose the race against dealloc,
+        // silently skipping the cleanup — including the context detach below
+        // (SDC-32484). The closure keeps the wrapper alive until it runs.
+        dispatchMain { [self] in
             self.removeAllOverlays()
             self.overlayKeyMap.removeAll()
             if let viewListener = self.viewListener {
