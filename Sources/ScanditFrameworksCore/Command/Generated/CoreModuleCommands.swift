@@ -128,67 +128,6 @@ public class UnregisterFrameSourceListenerCommand: CoreModuleCommand {
         )
     }
 }
-/// Adds an NV21 frame to the tracked sequence frame source with the given id
-public class AddFrameToSequenceFrameSourceCommand: CoreModuleCommand {
-    private let module: CoreModule
-    private let frameSourceId: String
-    private let width: Int
-    private let height: Int
-    private let frameData: String
-    public init(module: CoreModule, _ method: FrameworksMethodCall) {
-        self.module = module
-        self.frameSourceId = method.argument(key: "frameSourceId") ?? ""
-        self.width = method.argument(key: "width") ?? Int()
-        self.height = method.argument(key: "height") ?? Int()
-        self.frameData = method.argument(key: "frameData") ?? ""
-    }
-
-    public func execute(result: FrameworksResult) {
-        guard !frameSourceId.isEmpty else {
-            result.reject(
-                code: "MISSING_PARAMETER",
-                message: "Required parameter 'frameSourceId' is missing",
-                details: nil
-            )
-            return
-        }
-        guard !frameData.isEmpty else {
-            result.reject(code: "MISSING_PARAMETER", message: "Required parameter 'frameData' is missing", details: nil)
-            return
-        }
-        module.addFrameToSequenceFrameSource(
-            frameSourceId: frameSourceId,
-            width: width,
-            height: height,
-            frameData: frameData,
-            result: result
-        )
-    }
-}
-/// Returns the current state of the tracked sequence frame source with the given id
-public class GetSequenceFrameSourceStateCommand: CoreModuleCommand {
-    private let module: CoreModule
-    private let frameSourceId: String
-    public init(module: CoreModule, _ method: FrameworksMethodCall) {
-        self.module = module
-        self.frameSourceId = method.argument(key: "frameSourceId") ?? ""
-    }
-
-    public func execute(result: FrameworksResult) {
-        guard !frameSourceId.isEmpty else {
-            result.reject(
-                code: "MISSING_PARAMETER",
-                message: "Required parameter 'frameSourceId' is missing",
-                details: nil
-            )
-            return
-        }
-        module.getSequenceFrameSourceState(
-            frameSourceId: frameSourceId,
-            result: result
-        )
-    }
-}
 /// Registers a persistent listener for torch state change events
 public class RegisterTorchStateListenerCommand: CoreModuleCommand {
     private let module: CoreModule

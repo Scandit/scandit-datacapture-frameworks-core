@@ -24,8 +24,7 @@ public final class DataCaptureViewHandler {
         }
 
         topmostDataCaptureView.dispose()
-        let removed = viewCache.remove(viewId: topmostDataCaptureView.viewId)
-        return removed
+        return viewCache.remove(viewId: topmostDataCaptureView.viewId)
     }
 
     func removeView(_ viewId: Int) {

@@ -45,7 +45,6 @@ struct CoreDefaults: DefaultsEncodable {
     private let brushDefaults: EncodableBrush
     private let laserlineViewfinderDefaults: LaserlineViewfinderDefaults
     private let zoomSwitchControlDefaults: ZoomSwitchControlDefaults
-    private let macroModeControlDefaults: MacroModeControlDefaults
 
     init(
         cameraDefaults: CameraDefaults,
@@ -54,8 +53,7 @@ struct CoreDefaults: DefaultsEncodable {
         aimerViewfinderDefauls: EncodableAimerViewfinder,
         brushDefaults: EncodableBrush,
         laserlineViewfinderDefaults: LaserlineViewfinderDefaults,
-        zoomSwitchControlDefaults: ZoomSwitchControlDefaults,
-        macroModeControlDefaults: MacroModeControlDefaults
+        zoomSwitchControlDefaults: ZoomSwitchControlDefaults
     ) {
         self.cameraDefaults = cameraDefaults
         self.dataCaptureViewDefaults = dataCaptureViewDefaults
@@ -64,7 +62,6 @@ struct CoreDefaults: DefaultsEncodable {
         self.brushDefaults = brushDefaults
         self.laserlineViewfinderDefaults = laserlineViewfinderDefaults
         self.zoomSwitchControlDefaults = zoomSwitchControlDefaults
-        self.macroModeControlDefaults = macroModeControlDefaults
     }
 
     func toEncodable() -> [String: Any?] {
@@ -78,7 +75,6 @@ struct CoreDefaults: DefaultsEncodable {
             "Brush": brushDefaults.toEncodable(),
             "LaserlineViewfinder": laserlineViewfinderDefaults.toEncodable(),
             "ZoomSwitchControl": zoomSwitchControlDefaults.toEncodable(),
-            "MacroModeControl": macroModeControlDefaults.toEncodable(),
         ]
     }
 
@@ -96,8 +92,7 @@ struct CoreDefaults: DefaultsEncodable {
             aimerViewfinderDefauls: EncodableAimerViewfinder(viewfinder: AimerViewfinder()),
             brushDefaults: EncodableBrush(brush: .transparent),
             laserlineViewfinderDefaults: LaserlineViewfinderDefaults(viewfinder: LaserlineViewfinder()),
-            zoomSwitchControlDefaults: ZoomSwitchControlDefaults(control: ZoomSwitchControl()),
-            macroModeControlDefaults: MacroModeControlDefaults(control: MacroModeControl())
+            zoomSwitchControlDefaults: ZoomSwitchControlDefaults(control: ZoomSwitchControl())
         )
     }()
 }
