@@ -13,6 +13,7 @@ public final class DefaultFrameworksCaptureContext {
     private let contextLock = NSLock()
     private var initialized = false
     private var deserializers: Deserializers?
+    private var frameworksFrameSourceDeserializer: FrameworksFrameSourceDeserializer?
 
     public var context: DataCaptureContext? {
         initialized ? DataCaptureContext.shared : nil
@@ -28,6 +29,7 @@ public final class DefaultFrameworksCaptureContext {
         defer { contextLock.unlock() }
 
         deserializers = Deserializers.Factory.create(frameSourceDeserializerDelegate: frameSourceDeserializerListener)
+        frameworksFrameSourceDeserializer = frameSourceDeserializerListener
 
         let data = try DataCaptureContextData.from(jsonString: json)
 
@@ -51,8 +53,7 @@ public final class DefaultFrameworksCaptureContext {
 
         // Proceed with FrameSource
         if let frameSourceJson = data.frameSource {
-            if let frameSource = try deserializers?.frameSourceDeserializer.frameSource(fromJSONString: frameSourceJson)
-            {
+            if let frameSource = try deserializeFrameSource(frameSourceJson: frameSourceJson) {
                 dcContext.setFrameSource(frameSource)
             }
         }
@@ -77,11 +78,18 @@ public final class DefaultFrameworksCaptureContext {
         }
 
         if let frameSourceJson = data.frameSource {
-            if let frameSource = try deserializers?.frameSourceDeserializer.frameSource(fromJSONString: frameSourceJson)
-            {
+            if let frameSource = try deserializeFrameSource(frameSourceJson: frameSourceJson) {
                 context?.setFrameSource(frameSource)
             }
         }
+    }
+
+    private func deserializeFrameSource(frameSourceJson: String) throws -> FrameSource? {
+        guard let nativeDeserializer = deserializers?.frameSourceDeserializer else { return nil }
+        return try frameworksFrameSourceDeserializer?.frameSource(
+            fromJson: frameSourceJson,
+            nativeDeserializer: nativeDeserializer
+        )
     }
 
     func release(dataCaptureContextListener: DataCaptureContextListener) {

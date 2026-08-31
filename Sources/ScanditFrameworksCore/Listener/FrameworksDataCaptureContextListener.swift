@@ -14,6 +14,11 @@ open class FrameworksDataCaptureContextListener: NSObject {
 
     private var isEnabled = AtomicValue<Bool>()
 
+    /// Invoked whenever the context's frame source changes — including changes initiated purely
+    /// on the native side (e.g. the CameraSwitchControl swapping cameras). Not gated on
+    /// `isEnabled`: this drives internal frameworks state-keeping, not a JS-facing event.
+    public var onFrameSourceChanged: ((FrameSource?) -> Void)?
+
     public init(eventEmitter: Emitter) {
         self.eventEmitter = eventEmitter
     }
@@ -28,7 +33,9 @@ open class FrameworksDataCaptureContextListener: NSObject {
 }
 
 extension FrameworksDataCaptureContextListener: DataCaptureContextListener {
-    public func context(_ context: DataCaptureContext, didChange frameSource: FrameSource?) {}
+    public func context(_ context: DataCaptureContext, didChange frameSource: FrameSource?) {
+        onFrameSourceChanged?(frameSource)
+    }
 
     public func context(_ context: DataCaptureContext, didAdd mode: DataCaptureMode) {}
 
