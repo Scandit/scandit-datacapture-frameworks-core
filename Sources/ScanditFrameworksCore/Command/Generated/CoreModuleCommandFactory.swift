@@ -32,6 +32,10 @@ public class CoreModuleCommandFactory {
             return RegisterFrameSourceListenerCommand(module: module)
         case "unregisterFrameSourceListener":
             return UnregisterFrameSourceListenerCommand(module: module)
+        case "addFrameToSequenceFrameSource":
+            return AddFrameToSequenceFrameSourceCommand(module: module, method)
+        case "getSequenceFrameSourceState":
+            return GetSequenceFrameSourceStateCommand(module: module, method)
         case "registerTorchStateListener":
             return RegisterTorchStateListenerCommand(module: module)
         case "unregisterTorchStateListener":

@@ -22,11 +22,21 @@ public class EventWithResult<T> {
         self.timeout = timeout
     }
 
+    private var isClosed = false
+
     @discardableResult
     public func emit(on emitter: Emitter, payload: [String: Any?], default: T? = nil) -> T? {
         let timeoutDate = Date(timeIntervalSinceNow: timeout)
+
+        condition.lock()
         result = `default`
+        if isClosed {
+            let value = result
+            condition.unlock()
+            return value
+        }
         isCallbackFinished = false
+        condition.unlock()
 
         dispatchMain { [weak self] in
             guard let self else { return }
@@ -40,22 +50,40 @@ public class EventWithResult<T> {
                 isCallbackFinished = true
             }
         }
+        let value = result
         condition.unlock()
 
-        return result
+        return value
     }
 
     public func unlock(value: T?) {
+        condition.lock()
         result = value
-        release()
+        isCallbackFinished = true
+        condition.signal()
+        condition.unlock()
     }
 
     public func reset() {
-        release()
-    }
-
-    private func release() {
+        condition.lock()
         isCallbackFinished = true
         condition.signal()
+        condition.unlock()
+    }
+
+    // Rejects emits and releases any waiting emit until open() is called; unlike reset(),
+    // this also covers an emit that reaches its wait after the close.
+    public func close() {
+        condition.lock()
+        isClosed = true
+        isCallbackFinished = true
+        condition.broadcast()
+        condition.unlock()
+    }
+
+    public func open() {
+        condition.lock()
+        isClosed = false
+        condition.unlock()
     }
 }
