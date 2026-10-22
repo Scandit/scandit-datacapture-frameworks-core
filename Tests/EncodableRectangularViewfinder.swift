@@ -7,6 +7,8 @@
 import Foundation
 import ScanditCaptureCore
 
+@testable import ScanditFrameworksCore
+
 struct EncodableRectangularViewfinder: DefaultsEncodable {
     init(
         size: String,

@@ -38,7 +38,10 @@ public struct CameraSettingsDefaults: DefaultsEncodable {
             "macroMode": cameraSettings.macroMode.jsonString,
             "adaptiveExposure": cameraSettings.adaptiveExposure,
             "properties": CameraSettingsPropertiesDefaults(cameraSettings: cameraSettings).toEncodable(),
-            "zoomLevels": Array(cameraSettings.zoomLevels),
+            // Sorted because `zoomLevels` is a Set: `Array(_:)` hands back an arbitrary order
+            // that varies between two calls on the same settings object, so the same defaults
+            // would serialize differently each time (SDC-32178).
+            "zoomLevels": cameraSettings.zoomLevels.sorted(),
         ]
     }
 }

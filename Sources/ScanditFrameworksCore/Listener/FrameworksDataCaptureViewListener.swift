@@ -34,15 +34,15 @@ extension FrameworksDataCaptureViewListener: DataCaptureViewListener {
         orientation: UIInterfaceOrientation
     ) {
         guard isEnabled.value, eventEmitter.hasListener(for: event) else { return }
-        let payload =
-            [
-                "viewId": self.viewId,
-                "size": [
-                    "width": size.width,
-                    "height": size.height,
-                ],
-                "orientation": orientation.jsonString,
-            ] as [String: Any]
-        event.emit(on: eventEmitter, payload: payload)
+        let payload = SchemaTypes.DataCaptureViewListenerOnSizeChanged(
+            viewId: self.viewId,
+            size: SchemaTypes.DataCaptureViewListenerOnSizeChangedSize(
+                width: size.width,
+                height: size.height
+            ),
+            orientation: orientation.jsonString,
+            event: ScanditFrameworksCoreEvent.dataCaptureViewSizeChanged.rawValue
+        )
+        event.emit(on: eventEmitter, payload: payload.toDictionary())
     }
 }

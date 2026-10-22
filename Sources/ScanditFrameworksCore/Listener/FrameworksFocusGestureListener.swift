@@ -20,13 +20,12 @@ public class FrameworksFocusGestureListener: NSObject {
 extension FrameworksFocusGestureListener: FocusGestureListener {
     public func focusGesture(_ focusGesture: any FocusGesture, didTriggerFocusAtPoint pointWithUnit: PointWithUnit) {
         guard eventEmitter.hasViewSpecificListenersForEvent(viewId: self.viewId, for: focusGestureEvent) else { return }
-        focusGestureEvent.emit(
-            on: eventEmitter,
-            payload: [
-                "viewId": self.viewId,
-                "focusGesture": focusGesture.jsonString,
-                "point": pointWithUnit.jsonString,
-            ]
+        let payload = SchemaTypes.FocusGestureListenerOnFocusGesture(
+            viewId: self.viewId,
+            focusGesture: focusGesture.jsonString,
+            point: pointWithUnit.jsonString,
+            event: focusGestureEvent.name
         )
+        focusGestureEvent.emit(on: eventEmitter, payload: payload.toDictionary())
     }
 }

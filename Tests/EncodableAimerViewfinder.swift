@@ -7,6 +7,8 @@
 import Foundation
 import ScanditCaptureCore
 
+@testable import ScanditFrameworksCore
+
 struct EncodableAimerViewfinder: DefaultsEncodable {
     private let viewfinder: AimerViewfinder
 

@@ -12,7 +12,7 @@ open class BaseFrameworkModule: NSObject, FrameworkModule {
         label: "com.scandit.postViewCreationActions"
     )
     private var postViewCreationActions: [() -> Void] = []
-    private var postSpecificViewCreationActions: [Int: [() -> Void]] = [:]
+    private let viewCreationActionQueue = ViewCreationActionQueue()
 
     // MARK: - FrameworkModule
 
@@ -22,11 +22,6 @@ open class BaseFrameworkModule: NSObject, FrameworkModule {
 
     open func didStop() {
         clearAllPostViewCreationActions()
-    }
-
-    open func getDefaults() -> [String: Any?] {
-        // Implementation to be provided by subclasses
-        [:]
     }
 
     open func createCommand(_ method: any FrameworksMethodCall) -> (any BaseCommand)? {
@@ -42,23 +37,11 @@ open class BaseFrameworkModule: NSObject, FrameworkModule {
     }
 
     public func addPostSpecificViewCreationAction(viewId: Int, action: @escaping () -> Void) {
-        postViewCreationActionsQueue.sync {
-            if postSpecificViewCreationActions[viewId] == nil {
-                postSpecificViewCreationActions[viewId] = []
-            }
-            postSpecificViewCreationActions[viewId]?.append(action)
-        }
+        viewCreationActionQueue.enqueue(viewId: viewId, action: action)
     }
 
     public func getPostSpecificViewCreationActions(viewId: Int) -> [() -> Void] {
-        postViewCreationActionsQueue.sync {
-            guard let actions = postSpecificViewCreationActions[viewId] else {
-                return []
-            }
-            let result = actions
-            _ = postSpecificViewCreationActions.removeValue(forKey: viewId)
-            return result
-        }
+        viewCreationActionQueue.drain(viewId: viewId)
     }
 
     public func clearPostViewCreationActions() {
@@ -68,15 +51,13 @@ open class BaseFrameworkModule: NSObject, FrameworkModule {
     }
 
     public func clearPostSpecificViewCreationActions(viewId: Int) {
-        postViewCreationActionsQueue.sync {
-            _ = postSpecificViewCreationActions.removeValue(forKey: viewId)
-        }
+        viewCreationActionQueue.clear(viewId: viewId)
     }
 
     public func clearAllPostViewCreationActions() {
         postViewCreationActionsQueue.sync {
             postViewCreationActions.removeAll()
-            postSpecificViewCreationActions.removeAll()
         }
+        viewCreationActionQueue.clearAll()
     }
 }

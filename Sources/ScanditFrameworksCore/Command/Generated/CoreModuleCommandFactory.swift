@@ -26,12 +26,18 @@ public class CoreModuleCommandFactory {
             return SwitchCameraToDesiredStateCommand(module: module, method)
         case "isTorchAvailable":
             return IsTorchAvailableCommand(module: module, method)
+        case "isTorchLevelAvailable":
+            return IsTorchLevelAvailableCommand(module: module, method)
         case "isMacroModeAvailable":
             return IsMacroModeAvailableCommand(module: module)
         case "registerFrameSourceListener":
             return RegisterFrameSourceListenerCommand(module: module)
         case "unregisterFrameSourceListener":
             return UnregisterFrameSourceListenerCommand(module: module)
+        case "addFrameToSequenceFrameSource":
+            return AddFrameToSequenceFrameSourceCommand(module: module, method)
+        case "getSequenceFrameSourceState":
+            return GetSequenceFrameSourceStateCommand(module: module, method)
         case "registerTorchStateListener":
             return RegisterTorchStateListenerCommand(module: module)
         case "unregisterTorchStateListener":
@@ -96,6 +102,10 @@ public class CoreModuleCommandFactory {
             return UpdateDataCaptureViewCommand(module: module, method)
         case "emitFeedback":
             return EmitFeedbackCommand(module: module, method)
+        case "addListener":
+            return AddListenerCommand(module: module, method)
+        case "removeListener":
+            return RemoveListenerCommand(module: module, method)
         default:
             return nil
         }

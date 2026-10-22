@@ -58,7 +58,7 @@ final class EventWithResultTests: XCTestCase {
         event.close()
 
         let start = Date()
-        let result = event.emit(on: emitter, payload: [:], default: true)
+        let result = emitOffMain(default: true)
         let elapsed = Date().timeIntervalSince(start)
 
         XCTAssertEqual(result, true)
@@ -116,5 +116,73 @@ final class EventWithResultTests: XCTestCase {
         event.unlock(value: true)
         wait(for: [emitReturned], timeout: 2)
         XCTAssertEqual(result, true)
+    }
+
+    func testEmitOnMainThreadReturnsDefaultWithoutEmitting() {
+        var emitCount = 0
+        emitter.onEmit = { emitCount += 1 }
+        var handlerCount = 0
+        let event = EventWithResult<Bool>(
+            event: Event(name: "test"),
+            timeout: 5,
+            isMainThread: { true },
+            onMainThreadEmit: { handlerCount += 1 }
+        )
+
+        let start = Date()
+        let result = event.emit(on: emitter, payload: [:], default: true)
+        let elapsed = Date().timeIntervalSince(start)
+
+        XCTAssertEqual(result, true)
+        XCTAssertLessThan(elapsed, 0.5)
+        XCTAssertEqual(emitCount, 0)
+        XCTAssertEqual(handlerCount, 1)
+    }
+
+    func testMainThreadEmitDoesNotDisturbSubsequentOffMainEmit() {
+        var onMain = true
+        let event = EventWithResult<Bool>(
+            event: Event(name: "test"),
+            timeout: 5,
+            isMainThread: { onMain },
+            onMainThreadEmit: {}
+        )
+        XCTAssertEqual(event.emit(on: emitter, payload: [:], default: false), false)
+
+        onMain = false
+        let emitDispatched = expectation(description: "emit dispatched")
+        emitter.onEmit = { emitDispatched.fulfill() }
+        let emitReturned = expectation(description: "emit returned")
+        var result: Bool?
+        DispatchQueue.global().async { [emitter] in
+            result = event.emit(on: emitter, payload: [:], default: false)
+            emitReturned.fulfill()
+        }
+        wait(for: [emitDispatched], timeout: 2)
+        event.unlock(value: true)
+        wait(for: [emitReturned], timeout: 2)
+        XCTAssertEqual(result, true)
+    }
+
+    func testLateUnlockAfterTimeoutDoesNotReachNextEmit() {
+        event.timeout = 0.05
+
+        let first = emitOffMain(default: false)
+        event.unlock(value: true)
+        let second = emitOffMain(default: false)
+
+        XCTAssertEqual(first, false)
+        XCTAssertEqual(second, false)
+    }
+
+    private func emitOffMain(default value: Bool) -> Bool? {
+        let emitReturned = expectation(description: "emit returned")
+        var result: Bool?
+        DispatchQueue.global().async { [event, emitter] in
+            result = event!.emit(on: emitter, payload: [:], default: value)
+            emitReturned.fulfill()
+        }
+        wait(for: [emitReturned], timeout: 2)
+        return result
     }
 }

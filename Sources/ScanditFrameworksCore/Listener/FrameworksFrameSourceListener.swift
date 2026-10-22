@@ -27,14 +27,15 @@ open class FrameworksFrameSourceListener: NSObject {
 
 extension FrameworksFrameSourceListener: FrameSourceListener {
     public func frameSource(_ source: FrameSource, didChange newState: FrameSourceState) {
-        var payload = ["state": newState.jsonString]
-
-        if let camera = source as? Camera {
-            payload["cameraPosition"] = camera.position.jsonString
-        }
-
         guard isEnabled.value, eventEmitter.hasListener(for: frameSourceStateChangedEvent) else { return }
-        frameSourceStateChangedEvent.emit(on: eventEmitter, payload: payload)
+        // cameraPosition is omitted entirely for a non-Camera frame source (not sent as null) --
+        // jsmobile's CameraController must treat it as optional (SDC-32670).
+        let payload = SchemaTypes.FrameSourceListenerOnStateChanged(
+            state: newState.jsonString,
+            cameraPosition: (source as? Camera)?.position.jsonString,
+            event: frameSourceStateChangedEvent.name
+        )
+        frameSourceStateChangedEvent.emit(on: eventEmitter, payload: payload.toDictionary())
     }
 
     public func frameSource(_ source: FrameSource, didOutputFrame frame: FrameData) {}

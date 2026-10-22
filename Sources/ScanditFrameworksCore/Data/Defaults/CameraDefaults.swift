@@ -7,26 +7,27 @@
 import Foundation
 import ScanditCaptureCore
 
-struct CameraDefaults: DefaultsEncodable {
-    private let cameraSettingsDefaults: EncodableCameraSettings
+struct CameraDefaults {
     private let defaultPosition: CameraPosition?
     private let availablePositions: [CameraPosition]?
 
-    init(
-        cameraSettingsDefaults: EncodableCameraSettings,
-        defaultPosition: CameraPosition?,
-        availablePositions: [CameraPosition]?
-    ) {
-        self.cameraSettingsDefaults = cameraSettingsDefaults
+    init(defaultPosition: CameraPosition?, availablePositions: [CameraPosition]?) {
         self.defaultPosition = defaultPosition
         self.availablePositions = availablePositions
     }
 
-    func toEncodable() -> [String: Any?] {
+    /// The residual keys of this block that a framework plugin cannot resolve statically: the
+    /// device-probed default and available camera positions. The camera settings themselves
+    /// ship as a generated static file.
+    func toDynamicEncodable() -> [String: Any?] {
         [
-            "Settings": cameraSettingsDefaults.toEncodable(),
-            "defaultPosition": defaultPosition?.jsonString,
-            "availablePositions": availablePositions?.map { $0.jsonString },
+            Keys.defaultPosition: defaultPosition?.jsonString,
+            Keys.availablePositions: availablePositions?.map { $0.jsonString },
         ]
+    }
+
+    enum Keys {
+        static let defaultPosition = "defaultPosition"
+        static let availablePositions = "availablePositions"
     }
 }
