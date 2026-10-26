@@ -23,23 +23,25 @@ extension FrameworksZoomGestureListener: ZoomGestureListener {
         guard eventEmitter.hasViewSpecificListenersForEvent(viewId: self.viewId, for: zoomInGestureEvent) else {
             return
         }
-        let payload = SchemaTypes.ZoomGestureListenerOnZoomInGesture(
-            viewId: self.viewId,
-            zoomGesture: zoomGesture.jsonString,
-            event: zoomInGestureEvent.name
+        zoomInGestureEvent.emit(
+            on: eventEmitter,
+            payload: [
+                "viewId": self.viewId,
+                "zoomGesture": zoomGesture.jsonString,
+            ]
         )
-        zoomInGestureEvent.emit(on: eventEmitter, payload: payload.toDictionary())
     }
 
     public func zoomGestureDidZoomOut(_ zoomGesture: any ZoomGesture) {
         guard eventEmitter.hasViewSpecificListenersForEvent(viewId: self.viewId, for: zoomOutGestureEvent) else {
             return
         }
-        let payload = SchemaTypes.ZoomGestureListenerOnZoomOutGesture(
-            viewId: self.viewId,
-            zoomGesture: zoomGesture.jsonString,
-            event: zoomOutGestureEvent.name
+        zoomOutGestureEvent.emit(
+            on: eventEmitter,
+            payload: [
+                "viewId": self.viewId,
+                "zoomGesture": zoomGesture.jsonString,
+            ]
         )
-        zoomOutGestureEvent.emit(on: eventEmitter, payload: payload.toDictionary())
     }
 }

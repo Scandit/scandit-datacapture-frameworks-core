@@ -26,8 +26,6 @@ public class CoreModuleCommandFactory {
             return SwitchCameraToDesiredStateCommand(module: module, method)
         case "isTorchAvailable":
             return IsTorchAvailableCommand(module: module, method)
-        case "isTorchLevelAvailable":
-            return IsTorchLevelAvailableCommand(module: module, method)
         case "isMacroModeAvailable":
             return IsMacroModeAvailableCommand(module: module)
         case "registerFrameSourceListener":
@@ -102,10 +100,6 @@ public class CoreModuleCommandFactory {
             return UpdateDataCaptureViewCommand(module: module, method)
         case "emitFeedback":
             return EmitFeedbackCommand(module: module, method)
-        case "addListener":
-            return AddListenerCommand(module: module, method)
-        case "removeListener":
-            return RemoveListenerCommand(module: module, method)
         default:
             return nil
         }

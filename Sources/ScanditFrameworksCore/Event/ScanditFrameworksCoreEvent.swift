@@ -7,7 +7,6 @@
 public enum ScanditFrameworksCoreEvent: String, CaseIterable {
     case contextStatusChanged = "DataCaptureContextListener.onStatusChanged"
     case contextObservingStarted = "DataCaptureContextListener.onObservationStarted"
-    case contextFrameSourceChanged = "DataCaptureContextListener.onFrameSourceChanged"
     case dataCaptureViewSizeChanged = "DataCaptureViewListener.onSizeChanged"
     case frameSourceStateChanged = "FrameSourceListener.onStateChanged"
     case torchStateChanged = "TorchListener.onTorchStateChanged"

@@ -14,7 +14,7 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/Scandit/datacapture-spm.git", exact: "8.7.0-beta.1"),
+        .package(url: "https://github.com/Scandit/datacapture-spm.git", exact: "8.6.2"),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.

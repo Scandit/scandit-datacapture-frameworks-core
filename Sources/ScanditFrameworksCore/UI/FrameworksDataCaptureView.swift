@@ -45,10 +45,6 @@ public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
         pendingOverlayKey = key
     }
 
-    func overlay(forKey key: String) -> DataCaptureOverlay? {
-        overlayKeyMap[key]
-    }
-
     func removeOverlayByKey(_ key: String) {
         guard let overlay = overlayKeyMap.removeValue(forKey: key) else { return }
         removeOverlay(overlay)

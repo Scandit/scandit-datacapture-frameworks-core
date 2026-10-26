@@ -6,7 +6,6 @@
 
 import ScanditCaptureCore
 import ScanditCaptureCoreDeserializer
-import UIKit
 
 #if SWIFT_PACKAGE
 private import _ScanditFrameworksCorePrivate
@@ -93,11 +92,6 @@ open class CoreModule: BaseFrameworkModule {
         self.frameSourceListener = frameSourceListener
         self.dataCaptureContextListener = dataCaptureContextListener
         self.frameSourceHandler = frameSourceHandler
-        // Register the emitter with ScanditLogger so log records captured on
-        // the iOS side (bridge calls, lifecycle, listener events) are batched
-        // and shipped back to the JS/Dart layer over the same event channel.
-        // No-op if the customer hasn't enabled the logger (level=.off).
-        ScanditLogger.shared.registerEmitter(emitter)
     }
 
     public static func create(emitter: Emitter) -> CoreModule {
@@ -129,9 +123,8 @@ open class CoreModule: BaseFrameworkModule {
         )
     }
 
-    /// Only the defaults that cannot be resolved statically by a framework plugin.
-    public func getDynamicDefaults() -> [String: Any?] {
-        CoreDefaults.shared.toDynamicEncodable()
+    public override func getDefaults() -> [String: Any?] {
+        CoreDefaults.shared.toEncodable()
     }
 
     public func createContextFromJson(contextJson: String, result: FrameworksResult) {
@@ -275,20 +268,6 @@ open class CoreModule: BaseFrameworkModule {
         result.success(result: isTorchAvailable)
     }
 
-    public func isTorchLevelAvailable(cameraPosition: String, result: FrameworksResult) {
-        guard
-            let isTorchLevelAvailable = frameSourceHandler.getIsTorchLevelAvailableByPosition(
-                cameraPosition: cameraPosition
-            )
-        else {
-            Log.error(ScanditFrameworksCoreError.cameraNotReadyError)
-            result.reject(error: ScanditFrameworksCoreError.cameraNotReadyError)
-            return
-        }
-
-        result.success(result: isTorchLevelAvailable)
-    }
-
     public func getSequenceFrameSourceState(frameSourceId: String, result: FrameworksResult) {
         guard let state = frameSourceHandler.getSequenceFrameSourceState(frameSourceId: frameSourceId) else {
             result.reject(
@@ -318,40 +297,14 @@ open class CoreModule: BaseFrameworkModule {
     }
 
     public override func didStart() {
-        ListenerRegistry.shared.reset()
         DeserializationLifeCycleDispatcher.shared.attach(observer: self)
     }
 
     public override func didStop() {
         DeserializationLifeCycleDispatcher.shared.detach(observer: self)
         Deserializers.Factory.clearDeserializers()
-        ListenerRegistry.shared.reset()
         super.didStop()
         disposeContext(result: NoopFrameworksResult())
-    }
-
-    public func addListener(eventName: String, viewId: Int?, modeId: Int?, result: FrameworksResult) {
-        ListenerRegistry.shared.addListener(eventName: eventName, target: .of(viewId: viewId, modeId: modeId))
-        if let viewId {
-            result.registerViewSpecificCallback(viewId, eventNames: [eventName])
-        } else if let modeId {
-            result.registerModeSpecificCallback(modeId, eventNames: [eventName])
-        } else {
-            result.registerCallbackForEvents([eventName])
-        }
-        result.successAndKeepCallback(result: nil)
-    }
-
-    public func removeListener(eventName: String, viewId: Int?, modeId: Int?, result: FrameworksResult) {
-        ListenerRegistry.shared.removeListener(eventName: eventName, target: .of(viewId: viewId, modeId: modeId))
-        if let viewId {
-            result.unregisterViewSpecificCallback(viewId, eventNames: [eventName])
-        } else if let modeId {
-            result.unregisterModeSpecificCallback(modeId, eventNames: [eventName])
-        } else {
-            result.unregisterCallbackForEvents([eventName])
-        }
-        result.success()
     }
 
     public func subscribeContextListener(result: FrameworksResult) {
@@ -365,13 +318,9 @@ open class CoreModule: BaseFrameworkModule {
     }
 
     public func registerListenerForViewEvents(viewId: Int, result: FrameworksResult) {
-        guard let frameworksView = DataCaptureViewHandler.shared.getView(viewId) else {
-            addPostSpecificViewCreationAction(viewId: viewId) { [weak self] in
-                self?.registerListenerForViewEvents(viewId: viewId, result: result)
-            }
-            return
+        if let frameworksView = DataCaptureViewHandler.shared.getView(viewId) {
+            frameworksView.registerDataCaptureViewListener()
         }
-        frameworksView.registerDataCaptureViewListener()
         result.success()
     }
 
@@ -602,16 +551,7 @@ open class CoreModule: BaseFrameworkModule {
             return
         }
 
-        let creationData: DataCaptureViewCreationData
-        do {
-            // `fromJson` throws when a declared field (e.g. `viewId`) carries an invalid
-            // value (SDC-33315); the failure must reach `result.reject`.
-            creationData = try DataCaptureViewCreationData.fromJson(viewJson)
-        } catch {
-            result.reject(error: error)
-            completion?(nil)
-            return
-        }
+        let creationData = DataCaptureViewCreationData.fromJson(viewJson)
 
         if let existingview = DataCaptureViewHandler.shared.getView(creationData.viewId) {
             result.success(result: nil)
@@ -667,19 +607,17 @@ open class CoreModule: BaseFrameworkModule {
                 return
             }
 
-            do {
-                // `fromJson` throws when a declared field (e.g. `viewId`) carries an
-                // invalid value (SDC-33315); the failure must reach `result.reject` below.
-                let updateData = try DataCaptureViewCreationData.fromJson(viewJson)
+            let updateData = DataCaptureViewCreationData.fromJson(viewJson)
 
-                guard let frameworksView = DataCaptureViewHandler.shared.getView(updateData.viewId) else {
-                    Log.info(
-                        "updateDataCaptureView: no view found for viewId \(updateData.viewId). "
-                            + "The view may not have been created yet or was already disposed."
-                    )
-                    result.success()
-                    return
-                }
+            guard let frameworksView = DataCaptureViewHandler.shared.getView(updateData.viewId) else {
+                Log.info(
+                    "updateDataCaptureView: no view found for viewId \(updateData.viewId). "
+                        + "The view may not have been created yet or was already disposed."
+                )
+                result.success()
+                return
+            }
+            do {
 
                 try frameworksView.updateView(updateData: updateData)
 
@@ -700,9 +638,6 @@ open class CoreModule: BaseFrameworkModule {
                         view: frameworksView,
                         overlayJson: entry.jsonString
                     )
-                }
-                for entry in updateData.overlays where !keysToAdd.contains(entry.key) {
-                    self?.updateCoreOverlay(entry, on: frameworksView)
                 }
                 result.success()
             } catch {
@@ -791,91 +726,11 @@ open class CoreModule: BaseFrameworkModule {
         result: FrameworksResult,
         module: FrameworkModule
     ) -> Bool {
-        // Intercept the logger-config sync from the JS side before the
-        // generated command factory runs (it doesn't know about this method).
-        if method.method == "setLoggerConfig" {
-            handleSetLoggerConfig(method: method, result: result)
-            return true
-        }
-        if method.method == "writeLogs" {
-            handleWriteLogs(method: method, result: result)
-            return true
-        }
-        // Cordova-only: opens the persistent native->TS log-batch channel.
-        // `CordovaEventEmitter.emit` is a no-op until `registerCallback` has
-        // run for the event name, so the TS side issues this one
-        // isEventRegistration call (`subscribeNativeLogChannel`) to open it.
-        // RN/Capacitor never call this and are unaffected.
-        if method.method == "subscribeLoggerListener" {
-            result.registerCallbackForEvents(["ScanditLogger.batch"])
-            // NOT success(result:): on Cordova that consumes the callbackContext
-            // and the channel dies immediately after the first response.
-            result.successAndKeepCallback(result: nil)
-            return true
-        }
         guard let command = module.createCommand(method) else {
             return false
         }
-        let source = "ios.\(String(describing: type(of: module)))"
-        LoggingCommand.wrap(command, source: source, method: method).execute(result: result)
+        command.execute(result: result)
         return true
-    }
-
-    private func handleSetLoggerConfig(method: FrameworksMethodCall, result: FrameworksResult) {
-        let args = method.arguments()
-        let level: LogLevel = {
-            if let n = args["level"] as? Int { return LogLevel.fromRank(n) }
-            if let n = args["level"] as? NSNumber { return LogLevel.fromRank(n.intValue) }
-            return .off
-        }()
-        ScanditLogger.shared.setLevel(level)
-        if let n = args["categories"] as? Int {
-            ScanditLogger.shared.setCategories(LogCategory(rawValue: n))
-        } else if let n = args["categories"] as? NSNumber {
-            ScanditLogger.shared.setCategories(LogCategory(rawValue: n.intValue))
-        }
-        if let n = args["bufferSize"] as? Int {
-            ScanditLogger.shared.setBufferSize(n)
-        } else if let n = args["bufferSize"] as? NSNumber {
-            ScanditLogger.shared.setBufferSize(n.intValue)
-        }
-        result.success(result: nil)
-    }
-
-    private func handleWriteLogs(method: FrameworksMethodCall, result: FrameworksResult) {
-        let args = method.arguments()
-        guard
-            let path = args["path"] as? String,
-            let header = args["header"] as? String,
-            let body = args["body"] as? String
-        else {
-            result.reject(code: "WriteLogsError", message: "writeLogs: missing path/header/body", details: nil)
-            return
-        }
-
-        let extras = [
-            "platform": "ios",
-            "osVersion": UIDevice.current.systemVersion,
-            "appId": Bundle.main.bundleIdentifier ?? "unknown",
-        ]
-        let documents =
-            FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
-            ?? FileManager.default.temporaryDirectory
-
-        do {
-            let fileURL = try LogExportFile.write(
-                baseDirectory: documents,
-                path: path,
-                headerJson: header,
-                body: body,
-                extras: extras
-            )
-            result.success(result: fileURL.path)
-        } catch {
-            // os_log, not the rejection details, matching the Android handler.
-            Log.error(error)
-            result.reject(code: "WriteLogsError", message: error.localizedDescription, details: nil)
-        }
     }
 }
 
@@ -889,56 +744,14 @@ extension CoreModule: DeserializationLifeCycleObserver {
     }
 
     public func dataCaptureView(addOverlay overlayJson: String, to view: FrameworksDataCaptureView) throws {
-        let json = JSONValue(string: overlayJson)
-        switch json.string(forKey: "type", default: "") {
-        case Self.profilingOverlayType:
-            // ProfilingOverlay is a core, context-level overlay (not owned by any capture mode),
-            // so CoreModule constructs it directly rather than a mode deserializer.
-            //
-            // createDataCaptureView guarantees a context before dispatching overlays; this guard
-            // only covers a context torn down mid-update, where the pending key is reset per loop
-            // iteration.
-            guard let dcContext = captureContext.context else { return }
-            view.addOverlay(SDCProfilingOverlay(context: dcContext))
-        case Self.colorFillOverlayType:
-            // ColorFillOverlay is likewise core-level, and needs no context to construct.
-            view.addOverlay(ColorFillOverlay(color: Self.color(fromOverlay: json)))
-        default:
+        // ProfilingOverlay is a core, context-level overlay (not owned by any capture mode),
+        // so CoreModule constructs it directly rather than a mode deserializer.
+        guard JSONValue(string: overlayJson).string(forKey: "type", default: "") == "profilingOverlay" else {
             return
         }
-    }
-
-    /// Applies a changed property to a core overlay that is already attached.
-    ///
-    /// The overlay diff in `updateDataCaptureView` keys on `type:modeId`, which never changes for a
-    /// core overlay, so an overlay whose key is already present is otherwise skipped entirely.
-    /// Mode-owned overlays don't need this — each has its own update command on its mode module.
-    fileprivate func updateCoreOverlay(_ entry: OverlayEntry, on view: FrameworksDataCaptureView) {
-        guard entry.type == Self.colorFillOverlayType,
-            let overlay = view.overlay(forKey: entry.key) as? ColorFillOverlay
-        else { return }
-        overlay.color = Self.color(fromOverlay: JSONValue(string: entry.jsonString))
-    }
-
-    private static let profilingOverlayType = "profilingOverlay"
-    private static let colorFillOverlayType = "colorFill"
-
-    // Internal rather than private so UpdateDataCaptureViewTests can pin the fallbacks.
-    static func color(fromOverlay json: JSONValue) -> UIColor {
-        // Parsed here rather than in a native deserializer: the shared bridge removes `overlays`
-        // from the view JSON before handing it to the SDK, so no native deserializer ever sees a
-        // `colorFill` entry.
-        //
-        // Eight hex digits enforced here, not left to SDCColorFromHexString. That helper scans the
-        // string as one 32-bit value and shifts unconditionally, so it reads `#AABBCC` as
-        // r=00 g=AA b=BB a=CC instead of rejecting it -- and it uses `scanHexInt`, which succeeds
-        // on a *prefix*, so `#AABBCCG0` would scan as 0xAABBCC and paint a wrong colour too.
-        // Android's sdcHexToColorInt rejects both, so anything looser here would make the two
-        // platforms disagree on one payload. A malformed
-        // colour falls back to the transparent default an absent one gets.
-        let hex = json.string(forKey: "color", default: "")
-        let digits = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex
-        guard digits.count == 8, digits.allSatisfy(\.isHexDigit) else { return .clear }
-        return UIColor(sdcHexString: hex) ?? .clear
+        // createDataCaptureView guarantees a context before dispatching overlays; this guard only
+        // covers a context torn down mid-update, where the pending key is reset per loop iteration.
+        guard let dcContext = captureContext.context else { return }
+        view.addOverlay(SDCProfilingOverlay(context: dcContext))
     }
 }

@@ -18,10 +18,6 @@ public class FrameworksTorchListener: NSObject {
 extension FrameworksTorchListener: TorchListener {
     public func didChangeTorch(to torchState: TorchState) {
         guard eventEmitter.hasListener(for: torchStateChangedEvent) else { return }
-        let payload = SchemaTypes.TorchListenerOnTorchStateChanged(
-            state: torchState.jsonString,
-            event: torchStateChangedEvent.name
-        )
-        torchStateChangedEvent.emit(on: eventEmitter, payload: payload.toDictionary())
+        torchStateChangedEvent.emit(on: eventEmitter, payload: ["state": torchState.jsonString])
     }
 }

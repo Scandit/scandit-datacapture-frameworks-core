@@ -18,10 +18,6 @@ public class FrameworksMacroModeListener: NSObject {
 extension FrameworksMacroModeListener: MacroModeListener {
     public func didChange(_ macroMode: MacroMode) {
         guard eventEmitter.hasListener(for: macroModeChangedEvent) else { return }
-        let payload = SchemaTypes.MacroModeListenerOnMacroModeChanged(
-            macroMode: macroMode.jsonString,
-            event: macroModeChangedEvent.name
-        )
-        macroModeChangedEvent.emit(on: eventEmitter, payload: payload.toDictionary())
+        macroModeChangedEvent.emit(on: eventEmitter, payload: ["macroMode": macroMode.jsonString])
     }
 }
