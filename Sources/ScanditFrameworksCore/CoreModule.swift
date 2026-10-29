@@ -7,10 +7,6 @@
 import ScanditCaptureCore
 import ScanditCaptureCoreDeserializer
 
-#if SWIFT_PACKAGE
-private import _ScanditFrameworksCorePrivate
-#endif
-
 public enum ScanditFrameworksCoreError: Error, CustomNSError {
     case nilDataCaptureView
     case nilDataCaptureContext
@@ -106,19 +102,12 @@ open class CoreModule: BaseFrameworkModule {
             zoomListener: zoomListener
         )
         let frameSourceDeserializer = FrameworksFrameSourceDeserializer(frameSourceHandler: frameSourceHandler)
-        let dataCaptureContextListener = FrameworksDataCaptureContextListener(eventEmitter: emitter)
-        // Keep the tracked camera in sync with frame-source changes made purely on the native
-        // side (e.g. the CameraSwitchControl swapping cameras) so state listeners and
-        // switchCameraToState follow the actually-active camera.
-        dataCaptureContextListener.onFrameSourceChanged = { [weak frameSourceHandler] frameSource in
-            frameSourceHandler?.onFrameSourceChanged(frameSource: frameSource)
-        }
 
         return CoreModule(
             emitter: emitter,
             frameSourceDeserializer: frameSourceDeserializer,
             frameSourceListener: frameSourceListener,
-            dataCaptureContextListener: dataCaptureContextListener,
+            dataCaptureContextListener: FrameworksDataCaptureContextListener(eventEmitter: emitter),
             frameSourceHandler: frameSourceHandler
         )
     }
@@ -266,18 +255,6 @@ open class CoreModule: BaseFrameworkModule {
         }
 
         result.success(result: isTorchAvailable)
-    }
-
-    public func getSequenceFrameSourceState(frameSourceId: String, result: FrameworksResult) {
-        guard let state = frameSourceHandler.getSequenceFrameSourceState(frameSourceId: frameSourceId) else {
-            result.reject(
-                code: "NO_SEQUENCE_FRAME_SOURCE",
-                message: "No sequence frame source with id \(frameSourceId) is currently set.",
-                details: nil
-            )
-            return
-        }
-        result.success(result: state.jsonString)
     }
 
     public func isMacroModeAvailable(result: FrameworksResult) {
@@ -474,46 +451,6 @@ open class CoreModule: BaseFrameworkModule {
             } else {
                 result.reject(code: "-1", message: "Unable to switch the camera to \(stateJson).", details: nil)
             }
-        }
-    }
-
-    public func addFrameToSequenceFrameSource(
-        frameSourceId: String,
-        width: Int,
-        height: Int,
-        frameData: String,
-        result: FrameworksResult
-    ) {
-        guard let bytes = Data(base64Encoded: frameData) else {
-            result.reject(
-                code: "-1",
-                message: "Unable to Base64-decode the frame data.",
-                details: nil
-            )
-            return
-        }
-        let addResult = frameSourceHandler.addFrameToSequenceFrameSource(
-            frameSourceId: frameSourceId,
-            width: width,
-            height: height,
-            frameData: bytes
-        )
-        switch addResult {
-        case .added:
-            result.success(result: nil)
-        case .invalidFrameData:
-            result.reject(
-                code: "-1",
-                message: "Invalid frame data for a \(width)x\(height) frame: "
-                    + "expected at least \(width * height * 3 / 2) bytes of raw NV21.",
-                details: nil
-            )
-        case .noSuchFrameSource:
-            result.reject(
-                code: "-1",
-                message: "No sequence frame source with id \(frameSourceId) is currently set.",
-                details: nil
-            )
         }
     }
 
@@ -741,17 +678,5 @@ extension CoreModule: DeserializationLifeCycleObserver {
             DataCaptureViewHandler.shared.removeView(view.tag)
             DeserializationLifeCycleDispatcher.shared.dispatchDataCaptureViewDeserialized(view: nil)
         }
-    }
-
-    public func dataCaptureView(addOverlay overlayJson: String, to view: FrameworksDataCaptureView) throws {
-        // ProfilingOverlay is a core, context-level overlay (not owned by any capture mode),
-        // so CoreModule constructs it directly rather than a mode deserializer.
-        guard JSONValue(string: overlayJson).string(forKey: "type", default: "") == "profilingOverlay" else {
-            return
-        }
-        // createDataCaptureView guarantees a context before dispatching overlays; this guard only
-        // covers a context torn down mid-update, where the pending key is reset per loop iteration.
-        guard let dcContext = captureContext.context else { return }
-        view.addOverlay(SDCProfilingOverlay(context: dcContext))
     }
 }

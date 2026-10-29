@@ -19,24 +19,6 @@ public extension Dictionary {
     }
 }
 
-public extension String {
-    /// Decodes a JSON-object string into a `[String: Any]` dictionary of Foundation values.
-    ///
-    /// Use this to turn a native object's `jsonString` into a payload the event emitter can
-    /// serialize: placing a raw Objective-C object in a payload makes the emitter's
-    /// `JSONSerialization` abort (SIGABRT), whereas the decoded dictionary is a valid JSON object.
-    /// Returns `nil` for empty, malformed, or non-object JSON. Pairs with
-    /// `Dictionary.encodeToJSONString()`. (SDC-30555)
-    func decodeJSONObject() -> [String: Any]? {
-        guard let data = data(using: .utf8),
-            let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
-        else {
-            return nil
-        }
-        return object
-    }
-}
-
 public extension Dictionary where Key == String, Value == Any {
     var viewId: Int {
         self["viewId"] as? Int ?? 0
