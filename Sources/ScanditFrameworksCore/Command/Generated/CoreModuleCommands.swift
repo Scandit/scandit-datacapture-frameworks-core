@@ -81,6 +81,30 @@ public class IsTorchAvailableCommand: CoreModuleCommand {
         )
     }
 }
+/// Checks if torch level is available for the camera
+public class IsTorchLevelAvailableCommand: CoreModuleCommand {
+    private let module: CoreModule
+    private let cameraPosition: String
+    public init(module: CoreModule, _ method: FrameworksMethodCall) {
+        self.module = module
+        self.cameraPosition = method.argument(key: "cameraPosition") ?? ""
+    }
+
+    public func execute(result: FrameworksResult) {
+        guard !cameraPosition.isEmpty else {
+            result.reject(
+                code: "MISSING_PARAMETER",
+                message: "Required parameter 'cameraPosition' is missing",
+                details: nil
+            )
+            return
+        }
+        module.isTorchLevelAvailable(
+            cameraPosition: cameraPosition,
+            result: result
+        )
+    }
+}
 /// Checks if macro mode is available for the current device
 public class IsMacroModeAvailableCommand: CoreModuleCommand {
     private let module: CoreModule
@@ -124,6 +148,67 @@ public class UnregisterFrameSourceListenerCommand: CoreModuleCommand {
             "FrameSourceListener.onStateChanged"
         ])
         module.unregisterFrameSourceListener(
+            result: result
+        )
+    }
+}
+/// Adds an NV21 frame to the tracked sequence frame source with the given id
+public class AddFrameToSequenceFrameSourceCommand: CoreModuleCommand {
+    private let module: CoreModule
+    private let frameSourceId: String
+    private let width: Int
+    private let height: Int
+    private let frameData: String
+    public init(module: CoreModule, _ method: FrameworksMethodCall) {
+        self.module = module
+        self.frameSourceId = method.argument(key: "frameSourceId") ?? ""
+        self.width = method.argument(key: "width") ?? Int()
+        self.height = method.argument(key: "height") ?? Int()
+        self.frameData = method.argument(key: "frameData") ?? ""
+    }
+
+    public func execute(result: FrameworksResult) {
+        guard !frameSourceId.isEmpty else {
+            result.reject(
+                code: "MISSING_PARAMETER",
+                message: "Required parameter 'frameSourceId' is missing",
+                details: nil
+            )
+            return
+        }
+        guard !frameData.isEmpty else {
+            result.reject(code: "MISSING_PARAMETER", message: "Required parameter 'frameData' is missing", details: nil)
+            return
+        }
+        module.addFrameToSequenceFrameSource(
+            frameSourceId: frameSourceId,
+            width: width,
+            height: height,
+            frameData: frameData,
+            result: result
+        )
+    }
+}
+/// Returns the current state of the tracked sequence frame source with the given id
+public class GetSequenceFrameSourceStateCommand: CoreModuleCommand {
+    private let module: CoreModule
+    private let frameSourceId: String
+    public init(module: CoreModule, _ method: FrameworksMethodCall) {
+        self.module = module
+        self.frameSourceId = method.argument(key: "frameSourceId") ?? ""
+    }
+
+    public func execute(result: FrameworksResult) {
+        guard !frameSourceId.isEmpty else {
+            result.reject(
+                code: "MISSING_PARAMETER",
+                message: "Required parameter 'frameSourceId' is missing",
+                details: nil
+            )
+            return
+        }
+        module.getSequenceFrameSourceState(
+            frameSourceId: frameSourceId,
             result: result
         )
     }
@@ -369,6 +454,7 @@ public class SubscribeContextListenerCommand: CoreModuleCommand {
         result.registerCallbackForEvents([
             "DataCaptureContextListener.onObservationStarted",
             "DataCaptureContextListener.onStatusChanged",
+            "DataCaptureContextListener.onFrameSourceChanged",
         ])
         module.subscribeContextListener(
             result: result
@@ -387,6 +473,7 @@ public class UnsubscribeContextListenerCommand: CoreModuleCommand {
         result.unregisterCallbackForEvents([
             "DataCaptureContextListener.onObservationStarted",
             "DataCaptureContextListener.onStatusChanged",
+            "DataCaptureContextListener.onFrameSourceChanged",
         ])
         module.unsubscribeContextListener(
             result: result
@@ -751,6 +838,58 @@ public class EmitFeedbackCommand: CoreModuleCommand {
         }
         module.emitFeedback(
             feedbackJson: feedbackJson,
+            result: result
+        )
+    }
+}
+/// Registers a listener for an event with the global listener registry
+public class AddListenerCommand: CoreModuleCommand {
+    private let module: CoreModule
+    private let eventName: String
+    private let viewId: Int?
+    private let modeId: Int?
+    public init(module: CoreModule, _ method: FrameworksMethodCall) {
+        self.module = module
+        self.eventName = method.argument(key: "eventName") ?? ""
+        self.viewId = method.argument(key: "viewId")
+        self.modeId = method.argument(key: "modeId")
+    }
+
+    public func execute(result: FrameworksResult) {
+        guard !eventName.isEmpty else {
+            result.reject(code: "MISSING_PARAMETER", message: "Required parameter 'eventName' is missing", details: nil)
+            return
+        }
+        module.addListener(
+            eventName: eventName,
+            viewId: viewId,
+            modeId: modeId,
+            result: result
+        )
+    }
+}
+/// Removes a listener for an event from the global listener registry
+public class RemoveListenerCommand: CoreModuleCommand {
+    private let module: CoreModule
+    private let eventName: String
+    private let viewId: Int?
+    private let modeId: Int?
+    public init(module: CoreModule, _ method: FrameworksMethodCall) {
+        self.module = module
+        self.eventName = method.argument(key: "eventName") ?? ""
+        self.viewId = method.argument(key: "viewId")
+        self.modeId = method.argument(key: "modeId")
+    }
+
+    public func execute(result: FrameworksResult) {
+        guard !eventName.isEmpty else {
+            result.reject(code: "MISSING_PARAMETER", message: "Required parameter 'eventName' is missing", details: nil)
+            return
+        }
+        module.removeListener(
+            eventName: eventName,
+            viewId: viewId,
+            modeId: modeId,
             result: result
         )
     }

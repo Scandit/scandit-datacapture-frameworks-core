@@ -12,9 +12,13 @@ let package = Package(
             name: "ScanditFrameworksCore",
             targets: ["ScanditFrameworksCore"]
         ),
+        .library(
+            name: "_ScanditFrameworksCorePrivate",
+            targets: ["_ScanditFrameworksCorePrivate"]
+        ),
     ],
     dependencies: [
-        .package(url: "https://github.com/Scandit/datacapture-spm.git", exact: "8.5.5"),
+        .package(url: "https://github.com/Scandit/datacapture-spm.git", exact: "8.7.0"),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.

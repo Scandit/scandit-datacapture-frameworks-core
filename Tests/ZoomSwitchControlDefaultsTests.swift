@@ -9,6 +9,10 @@ import XCTest
 
 @testable import ScanditFrameworksCore
 
+/// Covers the production residual payload only. `orientation`, `isExpanded`,
+/// `isAlwaysExpanded` and `accessibilityHint` ship as generated static values and are
+/// checked against the SoT by the defaults drift test - asserting them off
+/// `ZoomSwitchControlWideDefaults` here would be the test target checking its own output.
 final class ZoomSwitchControlDefaultsTests: XCTestCase {
 
     private var defaults: [String: Any?]!
@@ -16,64 +20,20 @@ final class ZoomSwitchControlDefaultsTests: XCTestCase {
     override func setUp() {
         super.setUp()
         let control = ZoomSwitchControl()
-        defaults = ZoomSwitchControlDefaults(control: control).toEncodable()
-    }
-
-    // MARK: - Keys presence
-
-    func testContainsOrientationKey() {
-        XCTAssertNotNil(defaults["orientation"])
-    }
-
-    func testContainsIsAlwaysExpandedKey() {
-        XCTAssertNotNil(defaults["isAlwaysExpanded"])
-    }
-
-    func testContainsIsExpandedKey() {
-        XCTAssertNotNil(defaults["isExpanded"])
+        defaults = ZoomSwitchControlDefaults(control: control).toDynamicEncodable()
     }
 
     func testContainsAccessibilityLabelKey() {
-        XCTAssertNotNil(defaults["accessibilityLabel"])
-    }
-
-    func testContainsAccessibilityHintKey() {
-        XCTAssertNotNil(defaults["accessibilityHint"])
-    }
-
-    // MARK: - Default values
-
-    func testOrientationIsDefaultByDefault() {
-        XCTAssertEqual(defaults["orientation"] as? String, "default")
-    }
-
-    func testIsAlwaysExpandedIsFalseByDefault() {
-        XCTAssertEqual(defaults["isAlwaysExpanded"] as? Bool, false)
-    }
-
-    func testIsExpandedIsFalseByDefault() {
-        XCTAssertEqual(defaults["isExpanded"] as? Bool, false)
+        XCTAssertNotNil(defaults[ZoomSwitchControlDefaults.Keys.accessibilityLabel])
     }
 
     func testAccessibilityLabelIsNonEmpty() {
-        let label = defaults["accessibilityLabel"] as? String
+        let label = defaults[ZoomSwitchControlDefaults.Keys.accessibilityLabel] as? String
         XCTAssertNotNil(label)
         XCTAssertFalse(label!.isEmpty)
     }
 
-    func testAccessibilityHintIsNonEmpty() {
-        let hint = defaults["accessibilityHint"] as? String
-        XCTAssertNotNil(hint)
-        XCTAssertFalse(hint!.isEmpty)
-    }
-
-    // MARK: - Orientation JSON string values
-
-    func testOrientationValueIsValidJsonString() {
-        let orientation = defaults["orientation"] as? String
-        XCTAssertTrue(
-            orientation == "horizontal" || orientation == "vertical" || orientation == "default",
-            "orientation should be 'horizontal', 'vertical', or 'default', was: \(String(describing: orientation))"
-        )
+    func testDynamicPayloadCarriesOnlyTheResidualKey() {
+        XCTAssertEqual(Set(defaults.keys), [ZoomSwitchControlDefaults.Keys.accessibilityLabel])
     }
 }

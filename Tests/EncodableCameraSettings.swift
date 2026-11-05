@@ -7,6 +7,8 @@
 import Foundation
 import ScanditCaptureCore
 
+@testable import ScanditFrameworksCore
+
 private protocol DeprecatedCameraSettingsAccessor {
     var zoomGestureZoomFactor: Double { get }
 }

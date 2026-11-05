@@ -7,20 +7,24 @@
 import Foundation
 import ScanditCaptureCore
 
-public struct ZoomSwitchControlDefaults: DefaultsEncodable {
+public struct ZoomSwitchControlDefaults {
     private let control: ZoomSwitchControl
 
     public init(control: ZoomSwitchControl) {
         self.control = control
     }
 
-    public func toEncodable() -> [String: Any?] {
-        [
-            "orientation": control.orientation.jsonString,
-            "isAlwaysExpanded": control.isAlwaysExpanded,
-            "isExpanded": control.isExpanded,
-            "accessibilityLabel": control.accessibilityLabel,
-            "accessibilityHint": control.accessibilityHint,
-        ]
+    /// The residual key of this block that a framework plugin cannot resolve statically: the
+    /// localized accessibility label (it embeds the current zoom level).
+    ///
+    /// Every other zoom-switch default ships as a generated static file.
+    public func toDynamicEncodable() -> [String: Any?] {
+        [Keys.accessibilityLabel: control.accessibilityLabel]
+    }
+
+    /// The localized key of this block - the only one a framework plugin cannot resolve
+    /// statically (it embeds the current zoom level).
+    public enum Keys {
+        public static let accessibilityLabel = "accessibilityLabel"
     }
 }

@@ -18,12 +18,11 @@ public class FrameworksZoomListener: NSObject {
 extension FrameworksZoomListener: ZoomListener {
     public func didChangeZoomFactor(_ zoomFactor: CGFloat, oldZoomFactor: CGFloat) {
         guard eventEmitter.hasListener(for: zoomLevelChangedEvent) else { return }
-        zoomLevelChangedEvent.emit(
-            on: eventEmitter,
-            payload: [
-                "oldZoomLevel": oldZoomFactor,
-                "newZoomLevel": zoomFactor,
-            ]
+        let payload = SchemaTypes.ZoomListenerOnZoomLevelChanged(
+            oldZoomLevel: Double(oldZoomFactor),
+            newZoomLevel: Double(zoomFactor),
+            event: zoomLevelChangedEvent.name
         )
+        zoomLevelChangedEvent.emit(on: eventEmitter, payload: payload.toDictionary())
     }
 }

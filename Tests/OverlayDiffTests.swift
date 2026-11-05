@@ -4,6 +4,7 @@
  * Copyright (C) 2026- Scandit AG. All rights reserved.
  */
 
+import ScanditCaptureCore
 import XCTest
 
 @testable import ScanditFrameworksCore
@@ -236,5 +237,174 @@ final class OverlayDiffTests: XCTestCase {
 
         XCTAssertEqual(diff.keysToRemove, ["a:1", "c:3"])
         XCTAssertEqual(diff.keysToAdd, ["d:4", "e:5"])
+    }
+
+    // MARK: - Overlay dispatched before its mode exists
+
+    func testOverlayDispatchedBeforeItsModeExistsIsAttachedOnceUnderItsKey() throws {
+        try withDeferringModeModule { core, modeModule, view in
+            let json = Self.viewJson(("barcodeBatchBasic", 7))
+
+            core.updateDataCaptureView(viewJson: json, result: FakeFrameworksResult())
+            core.updateDataCaptureView(viewJson: json, result: FakeFrameworksResult())
+            modeModule.addMode(7)
+
+            XCTAssertEqual(modeModule.dispatchCount, 1)
+            XCTAssertEqual(view.overlays.count, 1)
+            XCTAssertEqual(view.overlayKeys, ["barcodeBatchBasic:7"])
+        }
+    }
+
+    func testOverlayRemovedBeforeItsModeExistsIsNeverAttached() throws {
+        try withDeferringModeModule { core, modeModule, view in
+            core.updateDataCaptureView(
+                viewJson: Self.viewJson(("barcodeBatchBasic", 7)),
+                result: FakeFrameworksResult()
+            )
+            core.updateDataCaptureView(viewJson: Self.viewJson(), result: FakeFrameworksResult())
+            modeModule.addMode(7)
+
+            XCTAssertTrue(view.overlays.isEmpty)
+            XCTAssertTrue(view.overlayKeys.isEmpty)
+        }
+    }
+
+    func testDeferredOverlaysOfTwoModesBindToTheirOwnKeysWhateverOrderTheModesArrive() throws {
+        try withDeferringModeModule { core, modeModule, view in
+            core.updateDataCaptureView(
+                viewJson: Self.viewJson(("barcodeBatchBasic", 7), ("barcodeCapture", 8)),
+                result: FakeFrameworksResult()
+            )
+            modeModule.addMode(8)
+            let captureOverlay = try XCTUnwrap(view.overlays.first)
+            modeModule.addMode(7)
+            core.updateDataCaptureView(
+                viewJson: Self.viewJson(("barcodeBatchBasic", 7)),
+                result: FakeFrameworksResult()
+            )
+
+            XCTAssertEqual(view.overlayKeys, ["barcodeBatchBasic:7"])
+            XCTAssertEqual(view.overlays.count, 1)
+            XCTAssertFalse(view.overlays.contains { $0 === captureOverlay })
+        }
+    }
+
+    func testDeferredOverlayReplacedBySameTypeOfAnotherModeIsNeverAttached() throws {
+        try withDeferringModeModule { core, modeModule, view in
+            core.updateDataCaptureView(
+                viewJson: Self.viewJson(("barcodeBatchBasic", 7)),
+                result: FakeFrameworksResult()
+            )
+            core.updateDataCaptureView(
+                viewJson: Self.viewJson(("barcodeBatchBasic", 9)),
+                result: FakeFrameworksResult()
+            )
+            modeModule.addMode(7)
+            modeModule.addMode(9)
+
+            XCTAssertEqual(view.overlayKeys, ["barcodeBatchBasic:9"])
+            XCTAssertEqual(view.overlays.count, 1)
+        }
+    }
+
+    func testDeferredOverlayIsDroppedByRemoveAllOverlays() throws {
+        try withDeferringModeModule { core, modeModule, view in
+            core.updateDataCaptureView(
+                viewJson: Self.viewJson(("barcodeBatchBasic", 7)),
+                result: FakeFrameworksResult()
+            )
+            view.removeAllOverlays()
+            modeModule.addMode(7)
+
+            XCTAssertTrue(view.overlays.isEmpty)
+            XCTAssertTrue(view.overlayKeys.isEmpty)
+        }
+    }
+
+    private static let viewId = 35180
+
+    private static func viewJson(_ overlays: (type: String, modeId: Int)...) -> String {
+        let entries = overlays.map { "{\"type\":\"\($0.type)\",\"modeId\":\($0.modeId)}" }
+        return "{\"viewId\":\(viewId),\"overlays\":[\(entries.joined(separator: ","))]}"
+    }
+
+    private func withDeferringModeModule(
+        _ body: (CoreModule, DeferringModeModule, FrameworksDataCaptureView) throws -> Void
+    ) throws {
+        let core = CoreModule.create(emitter: OverlayDiffNoopEmitter())
+        core.didStart()
+        let modeModule = DeferringModeModule()
+        DeserializationLifeCycleDispatcher.shared.attach(observer: modeModule)
+        defer {
+            DeserializationLifeCycleDispatcher.shared.detach(observer: modeModule)
+            core.didStop()
+            ScanditLoggerTestSupport.resetLogger()
+            ScanditLoggerTestSupport.drainScheduledFlush(self)
+        }
+
+        let contextJson = try Self.contextJson()
+        requireSuccess("createContextFromJson") {
+            core.createContextFromJson(contextJson: contextJson, result: $0)
+        }
+        requireSuccess("createDataCaptureView") {
+            core.createDataCaptureView(viewJson: "{\"viewId\":\(Self.viewId)}", result: $0) { _ in }
+        }
+        let view = try XCTUnwrap(DataCaptureViewHandler.shared.getView(Self.viewId))
+        defer { DataCaptureViewHandler.shared.removeView(Self.viewId) }
+
+        try body(core, modeModule, view)
+    }
+
+    private static func contextJson() throws -> String {
+        let url = try XCTUnwrap(Bundle.module.url(forResource: "license-link", withExtension: "json"))
+        let license = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        let context: [String: Any] = [
+            "licenseKey": try XCTUnwrap(license["key"] as? String),
+            "framework": "react-native",
+            "frameworkVersion": "0.74.1",
+        ]
+        return String(decoding: try JSONSerialization.data(withJSONObject: context), as: UTF8.self)
+    }
+
+    private func requireSuccess(_ step: String, execute: (FrameworksResult) -> Void) {
+        let result = FakeFrameworksResult()
+        execute(result)
+        let deadline = Date(timeIntervalSinceNow: 5)
+        while !result.successCalled && !result.rejectCalled && Date() < deadline {
+            RunLoop.main.run(mode: .default, before: Date(timeIntervalSinceNow: 0.01))
+        }
+        XCTAssertTrue(result.successCalled, "\(step) failed: \(result.rejectMessage ?? "did not settle")")
+    }
+}
+
+private final class OverlayDiffNoopEmitter: Emitter {
+    func emit(name: String, payload: [String: Any?]) {}
+    func hasListener(for event: String) -> Bool { false }
+    func hasViewSpecificListenersForEvent(_ viewId: Int, for event: String) -> Bool { false }
+    func hasModeSpecificListenersForEvent(_ modeId: Int, for event: String) -> Bool { false }
+}
+
+/// Mirrors a mode module's overlay attach: while the mode is not cached the attach is deferred
+/// through the real post-mode-creation queue and replayed when the mode arrives.
+private final class DeferringModeModule: BasicFrameworkModule<String>, DeserializationLifeCycleObserver {
+    private(set) var dispatchCount = 0
+
+    func addMode(_ modeId: Int) {
+        addModeToCache(modeId: modeId, mode: "mode-\(modeId)")
+        getPostModeCreationActions(modeId).forEach { $0() }
+    }
+
+    func dataCaptureView(addOverlay overlayJson: String, to view: FrameworksDataCaptureView) throws {
+        dispatchCount += 1
+        let json = try? JSONSerialization.jsonObject(with: Data(overlayJson.utf8)) as? [String: Any]
+        attachOverlay(to: view, modeId: json?["modeId"] as? Int ?? -1)
+    }
+
+    private func attachOverlay(to view: FrameworksDataCaptureView, modeId: Int) {
+        guard getModeFromCache(modeId) != nil else {
+            addPostModeCreationAction(modeId) { [weak self] in self?.attachOverlay(to: view, modeId: modeId) }
+            return
+        }
+        view.addOverlay(ColorFillOverlay(color: .red))
     }
 }

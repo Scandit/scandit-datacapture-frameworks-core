@@ -17,15 +17,41 @@ public class EventWithResult<T> {
     let condition = NSCondition()
     var isCallbackFinished = true
 
-    public init(event: Event, timeout: TimeInterval = defaultTimeoutInterval) {
+    private let isMainThread: () -> Bool
+    private let onMainThreadEmit: () -> Void
+
+    public convenience init(event: Event, timeout: TimeInterval = defaultTimeoutInterval) {
+        self.init(
+            event: event,
+            timeout: timeout,
+            isMainThread: { Thread.isMainThread },
+            onMainThreadEmit: { assertionFailure("EventWithResult.emit must be called off the main thread") }
+        )
+    }
+
+    init(
+        event: Event,
+        timeout: TimeInterval,
+        isMainThread: @escaping () -> Bool,
+        onMainThreadEmit: @escaping () -> Void
+    ) {
         self.event = event
         self.timeout = timeout
+        self.isMainThread = isMainThread
+        self.onMainThreadEmit = onMainThreadEmit
     }
 
     private var isClosed = false
 
     @discardableResult
     public func emit(on emitter: Emitter, payload: [String: Any?], default: T? = nil) -> T? {
+        // Waiting on main would freeze the UI for up to the full timeout.
+        if isMainThread() {
+            onMainThreadEmit()
+            Log.info("\(event.name) was emitted on the main thread; returning the default")
+            return `default`
+        }
+
         let timeoutDate = Date(timeIntervalSinceNow: timeout)
 
         condition.lock()
