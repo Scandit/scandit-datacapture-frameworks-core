@@ -152,6 +152,18 @@ final class ListenerRegistryTests: XCTestCase {
         XCTAssertTrue(registryEmitter.hasListener(for: stateChanged))
     }
 
+    func testRegisteredViewListenersComeFromRegistryOnly() {
+        let emitter = RecordingEmitter()
+        emitter.platformHasListeners = true
+        let registryEmitter = RegistryEmitter(platformEmitter: emitter, registry: registry)
+        registry.addListener(eventName: sizeChanged, target: .view(5))
+
+        XCTAssertTrue(registryEmitter.hasRegisteredViewListenersForEvent(5, for: sizeChanged))
+        XCTAssertFalse(registryEmitter.hasRegisteredViewListenersForEvent(6, for: sizeChanged))
+        XCTAssertFalse(registryEmitter.hasRegisteredViewListenersForEvent(5, for: stateChanged))
+        XCTAssertFalse(emitter.hasRegisteredViewListenersForEvent(5, for: sizeChanged))
+    }
+
     func testRegistryEmitterForwardsIdLessPayloadsToGlobalListeners() {
         let emitter = RecordingEmitter()
         let registryEmitter = RegistryEmitter(platformEmitter: emitter, registry: registry)

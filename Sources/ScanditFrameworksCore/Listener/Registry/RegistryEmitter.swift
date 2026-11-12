@@ -38,6 +38,10 @@ public final class RegistryEmitter: Emitter {
             || platformEmitter.hasViewSpecificListenersForEvent(viewId, for: event)
     }
 
+    public func hasRegisteredViewListenersForEvent(_ viewId: Int, for event: String) -> Bool {
+        registry.hasListeners(eventName: event, target: .view(viewId))
+    }
+
     public func hasModeSpecificListenersForEvent(_ modeId: Int, for event: String) -> Bool {
         registry.hasListeners(eventName: event, target: .mode(modeId))
             || platformEmitter.hasModeSpecificListenersForEvent(modeId, for: event)
