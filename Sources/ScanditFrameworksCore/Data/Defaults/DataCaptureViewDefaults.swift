@@ -7,8 +7,6 @@
 import Foundation
 import ScanditCaptureCore
 
-@testable import ScanditFrameworksCore
-
 struct DataCaptureViewDefaults: DefaultsEncodable {
     private let view: DataCaptureView
 

@@ -20,7 +20,6 @@ public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
     private var viewOverlays: [DataCaptureOverlay] = []
     private var overlayKeyMap: [String: DataCaptureOverlay] = [:]
     private var pendingOverlayKey: String?
-    private var deferredOverlayKeys: Set<String> = []
 
     private var viewListener: FrameworksDataCaptureViewListener?
     private var focusGestureListener: FrameworksFocusGestureListener?
@@ -40,46 +39,19 @@ public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
         viewOverlays
     }
 
-    var overlayKeys: Set<String> { Set(overlayKeyMap.keys).union(deferredOverlayKeys) }
+    var overlayKeys: Set<String> { Set(overlayKeyMap.keys) }
 
     func setPendingOverlayKey(_ key: String) {
         pendingOverlayKey = key
     }
 
-    func dispatchOverlay(_ key: String, _ dispatch: () throws -> Void) rethrows {
-        let previousPendingKey = pendingOverlayKey
-        pendingOverlayKey = key
-        let previousScope = OverlayDispatchScope.current
-        OverlayDispatchScope.current = OverlayDispatchScope(view: self, key: key)
-        defer {
-            OverlayDispatchScope.current = previousScope
-            pendingOverlayKey = previousPendingKey
-        }
-        try dispatch()
-        if pendingOverlayKey == key {
-            deferredOverlayKeys.insert(key)
-        }
-    }
-
-    func runDeferredOverlayAttach(_ key: String, _ action: @escaping () -> Void) {
-        dispatchMain { [weak self] in
-            guard let self, self.deferredOverlayKeys.remove(key) != nil else { return }
-            self.dispatchOverlay(key, action)
-        }
-    }
-
-    func overlay(forKey key: String) -> DataCaptureOverlay? {
-        overlayKeyMap[key]
-    }
-
     func removeOverlayByKey(_ key: String) {
-        deferredOverlayKeys.remove(key)
         guard let overlay = overlayKeyMap.removeValue(forKey: key) else { return }
         removeOverlay(overlay)
     }
 
     func removeExistingOverlaysOfType(_ type: String, excludingKey key: String) {
-        let conflictingKeys = overlayKeys.filter { existingKey in
+        let conflictingKeys = overlayKeyMap.keys.filter { existingKey in
             existingKey != key && existingKey.hasPrefix("\(type):")
         }
         for conflictingKey in conflictingKeys {
@@ -124,7 +96,6 @@ public class FrameworksDataCaptureView: NSObject, FrameworksBaseView {
             removeOverlay(overlay)
         }
         overlayKeyMap.removeAll()
-        deferredOverlayKeys.removeAll()
     }
 
     public func dispose() {

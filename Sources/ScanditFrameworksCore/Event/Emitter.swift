@@ -9,15 +9,9 @@ public protocol Emitter {
     func hasListener(for event: String) -> Bool
     func hasViewSpecificListenersForEvent(_ viewId: Int, for event: String) -> Bool
     func hasModeSpecificListenersForEvent(_ modeId: Int, for event: String) -> Bool
-    /// True only for listeners the framework registered in the ListenerRegistry for this view.
-    func hasRegisteredViewListenersForEvent(_ viewId: Int, for event: String) -> Bool
 }
 
 public extension Emitter {
-    func hasRegisteredViewListenersForEvent(_ viewId: Int, for event: String) -> Bool {
-        false
-    }
-
     func hasListener(for event: Event) -> Bool {
         hasListener(for: event.name)
     }

@@ -7,57 +7,95 @@
 import Foundation
 import ScanditCaptureCore
 
+extension ScanditCaptureCore.RectangularViewfinderStyle: Swift.CaseIterable {
+    public static var allCases: [RectangularViewfinderStyle] {
+        [.rounded, .square]
+    }
+}
+
+struct RectangularViewfinderDefaults: DefaultsEncodable {
+    func toEncodable() -> [String: Any?] {
+        let allViewFinders = Dictionary(
+            uniqueKeysWithValues: RectangularViewfinderStyle.allCases.map {
+                (
+                    $0.jsonString,
+                    EncodableRectangularViewfinder(viewfinder: RectangularViewfinder(style: $0)).toEncodable()
+                )
+            }
+        )
+
+        return [
+            "defaultStyle": RectangularViewfinderStyle.rounded.jsonString,
+            "styles": allViewFinders,
+        ]
+    }
+}
+
 extension ScanditCaptureCore.CameraPosition: Swift.CaseIterable {
     public static var allCases: [CameraPosition] {
         [.worldFacing, .userFacing, .unspecified]
     }
 }
 
-struct CoreDefaults {
+struct CoreDefaults: DefaultsEncodable {
     private let cameraDefaults: CameraDefaults
+    private let dataCaptureViewDefaults: DataCaptureViewDefaults
+    private let rectangularViewfinderDefaults: RectangularViewfinderDefaults
+    private let aimerViewfinderDefauls: EncodableAimerViewfinder
+    private let brushDefaults: EncodableBrush
+    private let laserlineViewfinderDefaults: LaserlineViewfinderDefaults
     private let zoomSwitchControlDefaults: ZoomSwitchControlDefaults
     private let macroModeControlDefaults: MacroModeControlDefaults
 
     init(
         cameraDefaults: CameraDefaults,
+        dataCaptureViewDefaults: DataCaptureViewDefaults,
+        rectangularViewfinderDefaults: RectangularViewfinderDefaults,
+        aimerViewfinderDefauls: EncodableAimerViewfinder,
+        brushDefaults: EncodableBrush,
+        laserlineViewfinderDefaults: LaserlineViewfinderDefaults,
         zoomSwitchControlDefaults: ZoomSwitchControlDefaults,
         macroModeControlDefaults: MacroModeControlDefaults
     ) {
         self.cameraDefaults = cameraDefaults
+        self.dataCaptureViewDefaults = dataCaptureViewDefaults
+        self.rectangularViewfinderDefaults = rectangularViewfinderDefaults
+        self.aimerViewfinderDefauls = aimerViewfinderDefauls
+        self.brushDefaults = brushDefaults
+        self.laserlineViewfinderDefaults = laserlineViewfinderDefaults
         self.zoomSwitchControlDefaults = zoomSwitchControlDefaults
         self.macroModeControlDefaults = macroModeControlDefaults
     }
 
-    /// Top-level keys of the dynamic defaults payload. The Dart side reads
-    /// `defaults['Version'] as String`, so a renamed literal here throws at plugin load.
-    enum Keys {
-        static let version = "Version"
-        static let deviceID = "deviceID"
-        static let camera = "Camera"
-        static let zoomSwitchControl = "ZoomSwitchControl"
-        static let macroModeControl = "MacroModeControl"
-    }
-
-    /// The residual set of core defaults that a framework plugin cannot resolve statically: the
-    /// SDK version, the device id and the device-probed camera positions, the localized
-    /// ZoomSwitchControl accessibility label, and the MacroModeControl block (localized texts and
-    /// asset handles). Every other core default ships as a generated static file.
-    func toDynamicEncodable() -> [String: Any?] {
+    func toEncodable() -> [String: Any?] {
         [
-            Keys.version: DataCaptureVersion.version(),
-            Keys.deviceID: DataCaptureContext.deviceID,
-            Keys.camera: cameraDefaults.toDynamicEncodable(),
-            Keys.zoomSwitchControl: zoomSwitchControlDefaults.toDynamicEncodable(),
-            Keys.macroModeControl: macroModeControlDefaults.toEncodable(),
+            "Version": DataCaptureVersion.version(),
+            "deviceID": DataCaptureContext.deviceID,
+            "Camera": cameraDefaults.toEncodable(),
+            "DataCaptureView": dataCaptureViewDefaults.toEncodable(),
+            "RectangularViewfinder": rectangularViewfinderDefaults.toEncodable(),
+            "AimerViewfinder": aimerViewfinderDefauls.toEncodable(),
+            "Brush": brushDefaults.toEncodable(),
+            "LaserlineViewfinder": laserlineViewfinderDefaults.toEncodable(),
+            "ZoomSwitchControl": zoomSwitchControlDefaults.toEncodable(),
+            "MacroModeControl": macroModeControlDefaults.toEncodable(),
         ]
     }
 
     static let shared: CoreDefaults = {
-        CoreDefaults(
-            cameraDefaults: CameraDefaults(
-                defaultPosition: Camera.default?.position,
-                availablePositions: CameraPosition.allCases.compactMap { Camera(position: $0)?.position }
-            ),
+        let cameraDefaults = CameraDefaults(
+            cameraSettingsDefaults: EncodableCameraSettings(cameraSettings: CameraSettings()),
+            defaultPosition: Camera.default?.position,
+            availablePositions: CameraPosition.allCases.compactMap { Camera(position: $0)?.position }
+        )
+        let rectangularViewfinderDefaults = RectangularViewfinderDefaults()
+        return CoreDefaults(
+            cameraDefaults: cameraDefaults,
+            dataCaptureViewDefaults: DataCaptureViewDefaults(view: DataCaptureView(frame: .zero)),
+            rectangularViewfinderDefaults: rectangularViewfinderDefaults,
+            aimerViewfinderDefauls: EncodableAimerViewfinder(viewfinder: AimerViewfinder()),
+            brushDefaults: EncodableBrush(brush: .transparent),
+            laserlineViewfinderDefaults: LaserlineViewfinderDefaults(viewfinder: LaserlineViewfinder()),
             zoomSwitchControlDefaults: ZoomSwitchControlDefaults(control: ZoomSwitchControl()),
             macroModeControlDefaults: MacroModeControlDefaults(control: MacroModeControl())
         )

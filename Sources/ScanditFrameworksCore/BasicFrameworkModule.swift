@@ -11,9 +11,6 @@ import ScanditCaptureCore
 open class BasicFrameworkModule<T>: NSObject, FrameworkModule {
 
     private var postModeCreationActions: [Int: [() -> Void]] = [:]
-    // Keyed by modeId, then by listener group, so a mode with more than one listener kind (for
-    // example BarcodeCapture's listener and its adaptive recognition service listener) replays each.
-    private var listenerRegistrations: [Int: [String: () -> Void]] = [:]
     private var modesCache: [Int: T] = [:]
     private var createdModes: [Int] = []
 
@@ -27,21 +24,19 @@ open class BasicFrameworkModule<T>: NSObject, FrameworkModule {
         // Implementation to be provided by subclasses
     }
 
+    open func getDefaults() -> [String: Any?] {
+        // Implementation to be provided by subclasses
+        [:]
+    }
+
     // MARK: - Mode Cache Management
 
     public func addModeToCache(modeId: Int, mode: T) {
         objc_sync_enter(self)
+        defer { objc_sync_exit(self) }
+
         modesCache[modeId] = mode
         createdModes.append(modeId)
-        objc_sync_exit(self)
-        let target = ListenerTarget.mode(modeId)
-        if ListenerRegistry.shared.hasListeners(target: target) {
-            ListenerRegistry.shared.reattach(target: target)
-        }
-        objc_sync_enter(self)
-        let registrations = Array((listenerRegistrations[modeId] ?? [:]).values)
-        objc_sync_exit(self)
-        registrations.forEach { $0() }
     }
 
     public func getModeFromCache(_ modeId: Int) -> T? {
@@ -89,22 +84,6 @@ open class BasicFrameworkModule<T>: NSObject, FrameworkModule {
 
     // MARK: - Post Mode Creation Actions
 
-    public func rememberListenerRegistration(
-        modeId: Int,
-        group: String = "default",
-        register: @escaping () -> Void
-    ) {
-        objc_sync_enter(self)
-        defer { objc_sync_exit(self) }
-        listenerRegistrations[modeId, default: [:]][group] = register
-    }
-
-    public func forgetListenerRegistration(modeId: Int, group: String = "default") {
-        objc_sync_enter(self)
-        defer { objc_sync_exit(self) }
-        listenerRegistrations[modeId]?.removeValue(forKey: group)
-    }
-
     public func addPostModeCreationAction(_ modeId: Int, action: @escaping () -> Void) {
         objc_sync_enter(self)
         defer { objc_sync_exit(self) }
@@ -112,7 +91,7 @@ open class BasicFrameworkModule<T>: NSObject, FrameworkModule {
         if postModeCreationActions[modeId] == nil {
             postModeCreationActions[modeId] = []
         }
-        postModeCreationActions[modeId]?.append(bindToActiveOverlayDispatch(action))
+        postModeCreationActions[modeId]?.append(action)
     }
 
     public func addPostModeCreationActionByParent(_ parentId: Int, action: @escaping () -> Void) {
@@ -122,14 +101,7 @@ open class BasicFrameworkModule<T>: NSObject, FrameworkModule {
         if postModeCreationActions[parentId] == nil {
             postModeCreationActions[parentId] = []
         }
-        postModeCreationActions[parentId]?.append(bindToActiveOverlayDispatch(action))
-    }
-
-    private func bindToActiveOverlayDispatch(_ action: @escaping () -> Void) -> () -> Void {
-        guard let scope = OverlayDispatchScope.current else { return action }
-        return { [weak view = scope.view, key = scope.key] in
-            view?.runDeferredOverlayAttach(key, action)
-        }
+        postModeCreationActions[parentId]?.append(action)
     }
 
     public func removeAllModesFromCache() {

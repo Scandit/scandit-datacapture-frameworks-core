@@ -4,8 +4,6 @@
  * Copyright (C) 2026- Scandit AG. All rights reserved.
  */
 
-import ScanditCaptureCore
-import UIKit
 import XCTest
 
 @testable import ScanditFrameworksCore
@@ -41,7 +39,7 @@ final class UpdateDataCaptureViewTests: XCTestCase {
         existingState: inout OverlayState,
         updateJson: String
     ) -> UpdateResult {
-        let updateData = try! DataCaptureViewCreationData.fromJson(updateJson)
+        let updateData = DataCaptureViewCreationData.fromJson(updateJson)
 
         let incomingKeys = Set(updateData.overlays.map(\.key))
         let existingKeys = existingState.keys
@@ -83,78 +81,6 @@ final class UpdateDataCaptureViewTests: XCTestCase {
             "{\"type\":\"\(type)\",\"modeId\":\(modeId)}"
         }.joined(separator: ",")
         return "{\"viewId\":\(viewId),\"overlays\":[\(overlayJsons)]}"
-    }
-
-    // MARK: - Core overlay colour update
-    //
-    // ColorFillOverlay belongs to no mode, so its diff key is a constant "colorFill:-1" and is
-    // never in keysToAdd on an update. The colour therefore reaches the view only through
-    // CoreModule's update arm, and these pin the parsing that arm feeds it.
-
-    private func components(_ color: UIColor) -> (r: CGFloat, g: CGFloat, b: CGFloat, a: CGFloat) {
-        var r: CGFloat = 0
-        var g: CGFloat = 0
-        var b: CGFloat = 0
-        var a: CGFloat = 0
-        color.getRed(&r, green: &g, blue: &b, alpha: &a)
-        return (r, g, b, a)
-    }
-
-    func testColourReachesTheOverlayWithItsAlphaIntact() {
-        let json = JSONValue(string: "{\"type\":\"colorFill\",\"color\":\"#12345680\"}")
-
-        let parsed = components(CoreModule.color(fromOverlay: json))
-
-        // #RRGGBBAA on the wire: 0x80 alpha must survive rather than becoming opaque.
-        XCTAssertEqual(parsed.r, 0x12 / 255.0, accuracy: 0.005)
-        XCTAssertEqual(parsed.g, 0x34 / 255.0, accuracy: 0.005)
-        XCTAssertEqual(parsed.b, 0x56 / 255.0, accuracy: 0.005)
-        XCTAssertEqual(parsed.a, 0x80 / 255.0, accuracy: 0.005)
-    }
-
-    func testAbsentColourFallsBackToClear() {
-        let json = JSONValue(string: "{\"type\":\"colorFill\"}")
-
-        XCTAssertEqual(components(CoreModule.color(fromOverlay: json)).a, 0, accuracy: 0.005)
-    }
-
-    /// Mirrors Android's `rejects a six digit colour rather than guessing its alpha`.
-    /// SDCColorFromHexString would otherwise read `#AABBCC` as r=00 g=AA b=BB a=CC, so accepting
-    /// six digits here would make the two platforms disagree on one payload.
-    func testSixDigitColourIsRejectedRatherThanMisread() {
-        let json = JSONValue(string: "{\"type\":\"colorFill\",\"color\":\"#AABBCC\"}")
-
-        XCTAssertEqual(components(CoreModule.color(fromOverlay: json)).a, 0, accuracy: 0.005)
-    }
-
-    func testMalformedColourFallsBackToClearRatherThanFailingTheUpdate() {
-        let json = JSONValue(string: "{\"type\":\"colorFill\",\"color\":\"not-a-color\"}")
-
-        XCTAssertEqual(components(CoreModule.color(fromOverlay: json)).a, 0, accuracy: 0.005)
-    }
-
-    /// Eight characters but not eight hex digits. A length-only guard would pass this to
-    /// SDCColorFromHexString, whose `scanHexInt` succeeds on the `AABBCC` prefix and paints a
-    /// colour; Android's `toInt(16)` throws on `G0`, so only a hex check keeps the two agreeing.
-    func testEightNonHexCharactersAreRejected() {
-        let json = JSONValue(string: "{\"type\":\"colorFill\",\"color\":\"#AABBCCG0\"}")
-
-        XCTAssertEqual(components(CoreModule.color(fromOverlay: json)).a, 0, accuracy: 0.005)
-    }
-
-    func testAnAttachedColorFillOverlayIsNeverReAdded() {
-        var state = OverlayState(keys: ["colorFill:-1"])
-
-        // A recoloured overlay serializes to the same key, so the diff has nothing to add or
-        // remove -- which is exactly why the update arm has to exist.
-        let result = applyUpdate(
-            existingState: &state,
-            updateJson: "{\"viewId\":1,\"overlays\":[{\"type\":\"colorFill\",\"color\":\"#12345680\"}]}"
-        )
-
-        XCTAssertTrue(result.addedKeys.isEmpty)
-        XCTAssertTrue(result.removedKeys.isEmpty)
-        XCTAssertEqual(state.keys, ["colorFill:-1"])
     }
 
     // MARK: - No overlay change

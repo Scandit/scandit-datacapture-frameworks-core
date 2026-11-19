@@ -46,28 +46,13 @@ public class DefaultAdvancedOverlayViewCache: AdvancedOverlayViewCache {
 
     private func createImageView(with image: UIImage, viewIdentifier: String) -> UIImageView {
         let imageView = UIImageView(image: image)
-        let scale = Self.displayScale()
+        let scale = UIScreen.main.scale
         imageView.frame.size = CGSize(
             width: imageView.frame.size.width / scale,
             height: imageView.frame.size.height / scale
         )
         views.setValue(imageView, for: viewIdentifier)
         return imageView
-    }
-
-    // An unspecified trait scale is 0; fall back to the active scene's screen, not to 1.
-    static func displayScale(
-        traitScale: CGFloat = UITraitCollection.current.displayScale,
-        screenScale: () -> CGFloat? = activeScreenScale
-    ) -> CGFloat {
-        if traitScale > 0 { return traitScale }
-        return screenScale() ?? 1
-    }
-
-    static func activeScreenScale() -> CGFloat? {
-        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        let scene = scenes.first { $0.activationState == .foregroundActive } ?? scenes.first
-        return scene?.screen.scale
     }
 
     private func parse(data: Data) -> UIImage? {

@@ -379,17 +379,6 @@ public class DefaultFrameSourceHandler: FrameSourceHandler {
         return camera.isTorchAvailable
     }
 
-    public func getIsTorchLevelAvailableByPosition(cameraPosition: String) -> Bool? {
-        var position = CameraPosition.unspecified
-        SDCCameraPositionFromJSONString(cameraPosition, &position)
-
-        guard let camera = camera, camera.position == position else {
-            return nil
-        }
-
-        return camera.isTorchLevelAvailable
-    }
-
     public func releaseCamera() {
         let cameraId = self.camera.map { ObjectIdentifier($0) }
         NSLog("[SDC32484] DefaultFrameSourceHandler.releaseCamera: entry camera=\(String(describing: cameraId))")
