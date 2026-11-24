@@ -19,6 +19,7 @@ public class CoreModuleCommandFactory {
     /// - Parameter method: The method call containing method name and arguments
     /// - Returns: The corresponding command, or nil if method is not recognized
     public static func create(module: CoreModule, _ method: FrameworksMethodCall) -> CoreModuleCommand? {
+        _ = LogMetadata.registered
         switch method.method {
         case "getCameraState":
             return GetCameraStateCommand(module: module, method)
@@ -26,6 +27,8 @@ public class CoreModuleCommandFactory {
             return SwitchCameraToDesiredStateCommand(module: module, method)
         case "isTorchAvailable":
             return IsTorchAvailableCommand(module: module, method)
+        case "isTorchLevelAvailable":
+            return IsTorchLevelAvailableCommand(module: module, method)
         case "isMacroModeAvailable":
             return IsMacroModeAvailableCommand(module: module)
         case "registerFrameSourceListener":
@@ -100,6 +103,10 @@ public class CoreModuleCommandFactory {
             return UpdateDataCaptureViewCommand(module: module, method)
         case "emitFeedback":
             return EmitFeedbackCommand(module: module, method)
+        case "addListener":
+            return AddListenerCommand(module: module, method)
+        case "removeListener":
+            return RemoveListenerCommand(module: module, method)
         default:
             return nil
         }

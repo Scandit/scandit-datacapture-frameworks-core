@@ -7,6 +7,8 @@
 import Foundation
 import ScanditCaptureCore
 
+@testable import ScanditFrameworksCore
+
 struct LaserlineViewfinderDefaults: DefaultsEncodable {
     private let viewfinder: LaserlineViewfinder
 

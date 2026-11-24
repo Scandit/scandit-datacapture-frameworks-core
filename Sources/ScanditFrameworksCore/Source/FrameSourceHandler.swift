@@ -47,6 +47,8 @@ public protocol FrameSourceHandler {
 
     func getIsTorchAvailableByPosition(cameraPosition: String) -> Bool?
 
+    func getIsTorchLevelAvailableByPosition(cameraPosition: String) -> Bool?
+
     var currentCameraState: FrameSourceState? { get }
 
     var currentCameraDesiredState: FrameSourceState? { get }

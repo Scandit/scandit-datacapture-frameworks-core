@@ -1,0 +1,9 @@
+/*
+ * This file is part of the Scandit Data Capture SDK
+ *
+ * Copyright (C) 2026- Scandit AG. All rights reserved.
+ */
+
+public enum CoreEventEmitter {
+    public static var emitter: Emitter?
+}

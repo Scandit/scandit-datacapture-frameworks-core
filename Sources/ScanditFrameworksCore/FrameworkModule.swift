@@ -8,5 +8,4 @@ public protocol FrameworkModule {
     func didStart()
     func didStop()
     func createCommand(_ method: FrameworksMethodCall) -> BaseCommand?
-    func getDefaults() -> [String: Any?]
 }
